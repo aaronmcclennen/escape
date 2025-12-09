@@ -2,8 +2,9 @@
 <html>
 <head>
     <title>Admin — Edit Question</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<link rel="stylesheet" href="./static/style.css">
+<body>
 <h1>Admin — {% if action == 'create' %}Create{% else %}Edit{% endif %} Question</h1>
 
 {% if action == 'create' %}
@@ -23,4 +24,5 @@
   <a href="/admin/questions" class="button">Cancel</a>
 </form>
 
+</body>
 </html>
