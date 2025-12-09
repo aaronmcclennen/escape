@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head>
+    <title>Admin — Edit Question</title>
+</head>
+<link rel="stylesheet" href="./static/style.css">
+<h1>Admin — {% if action == 'create' %}Create{% else %}Edit{% endif %} Question</h1>
+
+{% if action == 'create' %}
+<form action="/admin/questions/create" method="post">
+{% else %}
+<form action="/admin/questions/update/{{ riddle.id }}" method="post">
+{% endif %}
+  <label>Question</label><br>
+  <input type="text" name="question" value="{{ riddle.question if riddle else '' }}"><br>
+  <label>Answer(s) (comma separated)</label><br>
+  <input type="text" name="answer" value="{{ riddle.answer if riddle else '' }}"><br>
+  <label>Hint</label><br>
+  <input type="text" name="hint" value="{{ riddle.hint if riddle else '' }}"><br>
+  <label>Image name (static/)</label><br>
+  <input type="text" name="image_name" value="{{ riddle.image_name if riddle else '' }}"><br><br>
+  <input type="submit" value="{% if action == 'create' %}Create{% else %}Update{% endif %}">
+  <a href="/admin/questions" class="button">Cancel</a>
+</form>
+
+</html>

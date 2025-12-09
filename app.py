@@ -99,6 +99,89 @@ def progress():
     )
 
 
+@app.route("/admin/questions")
+def admin_questions():
+    # list riddles
+    riddles = []
+    for i in range(len(config_loader.get_riddles())):
+        r = config_loader.get_riddles()[i]
+        riddles.append(
+            {
+                "id": i,
+                "question": r.get_riddle(),
+                "answer": r.answer,
+                "hint": r.get_hint(),
+                "image_name": r.get_image_name(),
+            }
+        )
+    return render_template("admin_questions.html.j2", riddles=riddles)
+
+
+@app.route("/admin/questions/new")
+def admin_new_question():
+    return render_template("admin_edit.html.j2", action="create", riddle=None)
+
+
+@app.route("/admin/questions/create", methods=["POST"])
+def admin_create_question():
+    payload = {
+        "question": request.form.get("question", ""),
+        "answer": [
+            s.strip() for s in request.form.get("answer", "").split(",") if s.strip()
+        ],
+        "hint": request.form.get("hint", ""),
+        "image_name": request.form.get("image_name", ""),
+    }
+    config_loader.add_riddle(payload)
+    # sync in-memory manager
+    riddle_manager.riddles = config_loader.get_riddles()
+    return redirect(url_for("admin_questions"))
+
+
+@app.route("/admin/questions/edit/<int:index>")
+def admin_edit_question(index):
+    try:
+        r = config_loader.get_riddles()[index]
+    except Exception:
+        return redirect(url_for("admin_questions"))
+    riddle = {
+        "id": index,
+        "question": r.get_riddle(),
+        "answer": ", ".join(r.answer),
+        "hint": r.get_hint(),
+        "image_name": r.get_image_name(),
+    }
+    return render_template("admin_edit.html.j2", action="update", riddle=riddle)
+
+
+@app.route("/admin/questions/update/<int:index>", methods=["POST"])
+def admin_update_question(index):
+    payload = {
+        "question": request.form.get("question", ""),
+        "answer": [
+            s.strip() for s in request.form.get("answer", "").split(",") if s.strip()
+        ],
+        "hint": request.form.get("hint", ""),
+        "image_name": request.form.get("image_name", ""),
+    }
+    config_loader.update_riddle(index, payload)
+    riddle_manager.riddles = config_loader.get_riddles()
+    return redirect(url_for("admin_questions"))
+
+
+@app.route("/admin/questions/delete/<int:index>", methods=["POST"])
+def admin_delete_question(index):
+    config_loader.delete_riddle(index)
+    riddle_manager.riddles = config_loader.get_riddles()
+    # ensure current index not out of range
+    if (
+        riddle_manager.get_current_riddle() is None
+        and riddle_manager.get_current_riddle_number() > riddle_manager.get_riddle_count()
+    ):
+        riddle_manager.reset_progress()
+    return redirect(url_for("admin_questions"))
+
+
 if __name__ == "__main__":
     logging.info("Starting vermuten...")
     app.run()
