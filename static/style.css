@@ -1,4 +1,4 @@
-    h1 {
+h1 {
         color: darkblue;
         text-align: center;
     }
@@ -64,4 +64,22 @@ img {
   margin-right: auto;
   max-width: 20%;
   height: auto;
+}
+
+/* admin form inputs */
+.admin-input {
+  width: 80%;
+  max-width: 900px;
+  box-sizing: border-box;
+  padding: 8px;
+  font-size: 16px;
+}
+
+.admin-textarea {
+  width: 80%;
+  max-width: 900px;
+  height: 120px;
+  box-sizing: border-box;
+  padding: 8px;
+  font-size: 16px;
 }
