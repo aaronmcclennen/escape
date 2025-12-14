@@ -7,21 +7,6 @@
 <body>
 <h1>Admin — {% if action == 'create' %}Create{% else %}Edit{% endif %} Question</h1>
 
-{% if action == 'update' %}
-  <div style="margin-bottom:12px;">
-    {% if riddle.id > 0 %}
-      <form action="/admin/questions/move/{{ riddle.id }}/up" method="post" style="display:inline">
-        <button type="submit">Move Up</button>
-      </form>
-    {% endif %}
-    {% if riddle.id < total_count - 1 %}
-      <form action="/admin/questions/move/{{ riddle.id }}/down" method="post" style="display:inline">
-        <button type="submit">Move Down</button>
-      </form>
-    {% endif %}
-  </div>
-{% endif %}
-
 {% if action == 'create' %}
 <form action="/admin/questions/create" method="post">
 {% else %}

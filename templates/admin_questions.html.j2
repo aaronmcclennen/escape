@@ -2,8 +2,8 @@
 <html>
 <head>
     <title>Admin — Questions</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<link rel="stylesheet" href="./static/style.css">
 <h1>Admin — Questions</h1>
 
 <div style="text-align:center">
@@ -18,6 +18,19 @@
       <em>Answer(s):</em> {{ q.answer|join(", ") }}<br>
       <em>Hint:</em> {{ q.hint }}<br>
       <em>Image:</em> {{ q.image_name }}<br>
+
+      {# Move controls: hide Up for first, Down for last #}
+      {% if q.id > 0 %}
+        <form action="/admin/questions/move/{{ q.id }}/up" method="post" style="display:inline">
+          <button type="submit">Move Up</button>
+        </form>
+      {% endif %}
+      {% if q.id < total_count - 1 %}
+        <form action="/admin/questions/move/{{ q.id }}/down" method="post" style="display:inline">
+          <button type="submit">Move Down</button>
+        </form>
+      {% endif %}
+
       <form action="/admin/questions/edit/{{ q.id }}" method="get" style="display:inline">
         <button type="submit">Edit</button>
       </form>
