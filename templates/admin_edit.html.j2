@@ -2,9 +2,9 @@
 <html>
 <head>
     <title>Admin — Edit Question</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <h1>Admin — {% if action == 'create' %}Create{% else %}Edit{% endif %} Question</h1>
 
 {% if action == 'create' %}
