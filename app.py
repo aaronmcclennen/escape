@@ -151,7 +151,8 @@ def admin_edit_question(index):
         "hint": r.get_hint(),
         "image_name": r.get_image_name(),
     }
-    return render_template("admin_edit.html.j2", action="update", riddle=riddle)
+    total_count = len(config_loader.get_riddles())
+    return render_template("admin_edit.html.j2", action="update", riddle=riddle, total_count=total_count)
 
 
 @app.route("/admin/questions/update/<int:index>", methods=["POST"])
@@ -179,6 +180,32 @@ def admin_delete_question(index):
         and riddle_manager.get_current_riddle_number() > riddle_manager.get_riddle_count()
     ):
         riddle_manager.reset_progress()
+    return redirect(url_for("admin_questions"))
+
+
+@app.route("/admin/questions/move/<int:index>/<direction>", methods=["POST"])
+def admin_move_question(index, direction):
+    try:
+        rc = config_loader.get_riddles()
+        n = len(rc)
+        if index < 0 or index >= n:
+            raise Exception("index out of range")
+        # make ordered list
+        lst = [rc[i] for i in range(n)]
+        if direction == "up" and index > 0:
+            lst[index - 1], lst[index] = lst[index], lst[index - 1]
+        elif direction == "down" and index < n - 1:
+            lst[index], lst[index + 1] = lst[index + 1], lst[index]
+        else:
+            # nothing to do
+            return redirect(url_for("admin_questions"))
+        # rebuild dict with 0..n-1 keys and persist
+        new = {i: r for i, r in enumerate(lst)}
+        config_loader.riddle_collection = new
+        config_loader.save_config()
+        riddle_manager.riddles = config_loader.get_riddles()
+    except Exception:
+        logging.exception("Failed to move riddle")
     return redirect(url_for("admin_questions"))
 
 
