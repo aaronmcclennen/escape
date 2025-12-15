@@ -202,6 +202,30 @@ def admin_move_question(index, direction):
     return redirect(url_for("admin_questions"))
 
 
+@app.route("/admin/questions/download")
+def admin_download_questions():
+    try:
+        rc = config_loader.get_riddles()
+        riddles = []
+        for i in range(len(rc)):
+            r = rc[i]
+            riddles.append({
+                "question": r.get_riddle(),
+                "answer": r.answer,
+                "hint": r.get_hint(),
+                "image_name": r.get_image_name(),
+            })
+        import json
+        from flask import make_response
+        response = make_response(json.dumps({"riddles": riddles}, indent=2))
+        response.headers["Content-Type"] = "application/json"
+        response.headers["Content-Disposition"] = "attachment; filename=riddles.json"
+        return response
+    except Exception:
+        logging.exception("Failed to prepare download")
+        return redirect(url_for("admin_questions"))
+
+
 if __name__ == "__main__":
     logging.info("Starting vermuten...")
     app.run()
