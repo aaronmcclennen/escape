@@ -219,6 +219,7 @@ def admin_download_questions():
         from flask import make_response
         response = make_response(json.dumps({"riddles": riddles}, indent=2))
         response.headers["Content-Type"] = "application/json"
+        response.headers["Cache-Control"] = "no-cache"
         response.headers["Content-Disposition"] = "attachment; filename=riddles.json"
         return response
     except Exception:
