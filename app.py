@@ -227,6 +227,30 @@ def admin_download_questions():
         return redirect(url_for("admin_questions"))
 
 
+@app.route("/admin")
+def admin_index():
+    return render_template("admin_index.html.j2")
+
+@app.route("/admin/upload", methods=["POST"])
+def admin_upload():
+    file = request.files.get("file")
+    if not file:
+        return redirect(url_for("admin_index"))
+    try:
+        # overwrite the configured JSON file with the uploaded file contents
+        global config_loader, riddle_manager
+        target = config_loader.path_to_json_config
+        # write bytes to preserve encoding; uploaded file may be binary stream
+        with open(target, "wb") as f:
+            f.write(file.read())
+        # reload config loader and riddle manager
+        config_loader = ConfigLoader(target)
+        riddle_manager = config_loader.get_riddle_manager()
+    except Exception:
+        logging.exception("Failed to upload new game file")
+    return redirect(url_for("admin_questions"))
+
+
 if __name__ == "__main__":
     logging.info("Starting vermuten...")
     app.run()

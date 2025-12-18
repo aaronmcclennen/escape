@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+  <title>Admin Menu</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>Admin Menu</h1>
+
+  <div class="center" style="margin-bottom:12px;">
+    <a href="{{ url_for('admin_questions') }}" class="button">Manage Questions</a>
+    <a href="{{ url_for('progress') }}" class="button">Progress</a>
+    <a href="{{ url_for('admin_download_questions') }}" class="button" download="riddles.json">Download JSON</a>
+  </div>
+
+  <h2>Upload new game (JSON)</h2>
+  <p>Choose a riddles JSON file to replace the current game. The file will overwrite the configured config file.</p>
+  <form action="{{ url_for('admin_upload') }}" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" accept="application/json">
+    <button type="submit">Upload and Replace</button>
+  </form>
+
+  <div style="margin-top:18px;">
+    <a href="{{ url_for('admin_questions') }}" class="button">Back to Questions</a>
+  </div>
+</body>
+</html>
