@@ -15,10 +15,27 @@
 
   <h2>Upload new game (JSON)</h2>
   <p>Choose a riddles JSON file to replace the current game. The file will overwrite the configured config file.</p>
-  <form action="{{ url_for('admin_upload') }}" method="post" enctype="multipart/form-data">
-    <input type="file" name="file" accept="application/json">
-    <button type="submit">Upload and Replace</button>
+
+  <!-- Upload form: enctype required; visible "Choose file" label triggers file dialog -->
+  <form action="{{ url_for('admin_upload') }}" method="post" enctype="multipart/form-data" style="margin-bottom:12px;">
+    <input id="game-file-input" type="file" name="file" accept=".json,application/json" style="display:none;">
+    <label for="game-file-input" class="button" style="cursor:pointer; margin-right:8px;">Choose file</label>
+    <span id="selected-filename" style="margin-right:12px;">No file chosen</span>
+    <button type="submit" class="button">Upload and Replace</button>
   </form>
+
+  <script>
+    // show chosen filename next to the "Choose file" label
+    (function(){
+      const input = document.getElementById('game-file-input');
+      const label = document.getElementById('selected-filename');
+      if (!input) return;
+      input.addEventListener('change', function(){
+        const name = input.files && input.files.length ? input.files[0].name : 'No file chosen';
+        label.textContent = name;
+      });
+    })();
+  </script>
 
   <div style="margin-top:18px;">
     <a href="{{ url_for('admin_questions') }}" class="button">Back to Questions</a>
