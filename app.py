@@ -7,6 +7,9 @@ from flask import url_for
 from flask import render_template
 from flask import jsonify
 from application.JsonLoader import ConfigLoader
+from functools import wraps
+from flask import session, redirect, url_for, request
+from authlib.integrations.flask_client import OAuth
 
 logging_format = (
     "%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s"
@@ -250,6 +253,86 @@ def admin_upload():
         logging.exception("Failed to upload new game file")
     return redirect(url_for("admin_questions"))
 
+
+# --- OAuth setup (Authlib) ---
+app.secret_key = os.getenv("FLASK_SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret"))
+oauth = OAuth(app)
+oauth.register(
+    name="google",
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
+)
+
+def is_allowed_email(email: str) -> bool:
+    allowed_list = os.getenv("ADMIN_GOOGLE_EMAILS", "")  # comma-separated emails
+    allowed_domain = os.getenv("ADMIN_GOOGLE_DOMAIN", "")  # single domain, e.g. example.com
+    if not email:
+        return False
+    if allowed_list:
+        emails = [e.strip().lower() for e in allowed_list.split(",") if e.strip()]
+        if email.lower() in emails:
+            return True
+    if allowed_domain:
+        return email.lower().endswith("@" + allowed_domain.lower())
+    return False
+
+def require_admin(f):
+    @wraps(f)
+    def wrapped(*args, **kwargs):
+        if session.get("admin_email"):
+            return f(*args, **kwargs)
+        # redirect to login, preserve next
+        return redirect(url_for("login", next=request.path))
+    return wrapped
+
+def _is_public_admin_endpoint(path: str) -> bool:
+    # allow root, login callback, login page, logout, and static assets
+    if path == "/":
+        return True
+    if path.startswith("/static"):
+        return True
+    if path in ("/login", "/auth", "/logout"):
+        return True
+    return False
+
+@app.before_request
+def protect_admin_paths():
+    # Protect all /admin* URLs unless the user is already authenticated
+    p = request.path or ""
+    if p.startswith("/admin"):
+        if session.get("admin_email"):
+            return None  # allowed
+        if _is_public_admin_endpoint(p):
+            return None
+        # redirect to OAuth login, preserve next
+        return redirect(url_for("login", next=p))
+
+# --- Login / callback routes ---
+@app.route("/login")
+def login():
+    redirect_uri = url_for("auth", _external=True)
+    return oauth.google.authorize_redirect(redirect_uri)
+
+@app.route("/auth")
+def auth():
+    token = oauth.google.authorize_access_token()
+    # parse id token to get verified email
+    userinfo = oauth.google.parse_id_token(token)
+    email = userinfo.get("email")
+    email_verified = userinfo.get("email_verified", False)
+    if not (email and email_verified and is_allowed_email(email)):
+        return "Forbidden", 403
+    # mark session as admin
+    session["admin_email"] = email
+    next_url = request.args.get("next") or url_for("admin_index")
+    return redirect(next_url)
+
+@app.route("/logout")
+def logout():
+    session.pop("admin_email", None)
+    return redirect(url_for("index"))  # change as appropriate
 
 if __name__ == "__main__":
     logging.info("Starting vermuten...")
