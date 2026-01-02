@@ -122,7 +122,7 @@ def reset():
 @admin_bp.route("/reset")
 def reset_admin_page():
     riddle_manager.reset_progress()
-    return redirect((url_for("progress")))
+    return redirect((url_for("admin.progress")))
 
 
 @admin_bp.route("/progress")
@@ -165,7 +165,7 @@ def admin_create_question():
     config_loader.add_riddle(payload)
     # sync in-memory manager
     riddle_manager.riddles = config_loader.get_riddles()
-    return redirect(url_for("admin_questions"))
+    return redirect(url_for("admin.admin_questions"))
 
 
 @admin_bp.route("/questions/edit/<int:index>")
@@ -173,7 +173,7 @@ def admin_edit_question(index):
     try:
         r = config_loader.get_riddles()[index]
     except Exception:
-        return redirect(url_for("admin_questions"))
+        return redirect(url_for("admin.admin_questions"))
     riddle = {
         "id": index,
         "question": r.get_riddle(),
@@ -197,7 +197,7 @@ def admin_update_question(index):
     }
     config_loader.update_riddle(index, payload)
     riddle_manager.riddles = config_loader.get_riddles()
-    return redirect(url_for("admin_questions"))
+    return redirect(url_for("admin.admin_questions"))
 
 
 @admin_bp.route("/questions/delete/<int:index>", methods=["POST"])
@@ -210,7 +210,7 @@ def admin_delete_question(index):
         and riddle_manager.get_current_riddle_number() > riddle_manager.get_riddle_count()
     ):
         riddle_manager.reset_progress()
-    return redirect(url_for("admin_questions"))
+    return redirect(url_for("admin.admin_questions"))
 
 
 @admin_bp.route("/questions/move/<int:index>/<direction>", methods=["POST"])
@@ -228,7 +228,7 @@ def admin_move_question(index, direction):
             lst[index], lst[index + 1] = lst[index + 1], lst[index]
         else:
             # nothing to do
-            return redirect(url_for("admin_questions"))
+            return redirect(url_for("admin.admin_questions"))
         # rebuild dict with 0..n-1 keys and persist
         new = {i: r for i, r in enumerate(lst)}
         config_loader.riddle_collection = new
@@ -236,7 +236,7 @@ def admin_move_question(index, direction):
         riddle_manager.riddles = config_loader.get_riddles()
     except Exception:
         logging.exception("Failed to move riddle")
-    return redirect(url_for("admin_questions"))
+    return redirect(url_for("admin.admin_questions"))
 
 
 @admin_bp.route("/questions/download")
@@ -261,7 +261,7 @@ def admin_download_questions():
         return response
     except Exception:
         logging.exception("Failed to prepare download")
-        return redirect(url_for("admin_questions"))
+        return redirect(url_for("admin.admin_questions"))
 
 
 @admin_bp.route("/")
@@ -273,7 +273,7 @@ def admin_index():
 def admin_upload():
     file = request.files.get("file")
     if not file:
-        return redirect(url_for("admin_index"))
+        return redirect(url_for("admin.admin_index"))
     try:
         # overwrite the configured JSON file with the uploaded file contents
         global config_loader, riddle_manager
@@ -286,7 +286,7 @@ def admin_upload():
         riddle_manager = config_loader.get_riddle_manager()
     except Exception:
         logging.exception("Failed to upload new game file")
-    return redirect(url_for("admin_questions"))
+    return redirect(url_for("admin.admin_questions"))
 
 
 @app.route("/admin/login", methods=["GET","POST"])
@@ -305,9 +305,9 @@ def admin_login():
             # only redirect to a safe relative path
             if next_url and next_url.startswith("/"):
                 return redirect(next_url)
-            return redirect(url_for("admin_index"))
+            return redirect(url_for("adminadmin_index"))
         # failed login: re-render with an error flag (or you can flash)
-        return redirect(url_for("admin_login", next=next_url, error=1))
+        return redirect(url_for("admin.admin_login", next=next_url, error=1))
 
     return render_template("admin_login.html.j2")
 
