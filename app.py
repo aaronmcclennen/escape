@@ -6,7 +6,9 @@ from flask import redirect
 from flask import url_for
 from flask import render_template
 from flask import jsonify
-from application.JsonLoader import ConfigLoader
+from flask import Blueprint
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import check_password_hash, generate_password_hash
 
 logging_format = (
     "%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s"
@@ -18,6 +20,35 @@ config_file = os.getenv("VERMUTEN_CONFIG")
 config_loader = ConfigLoader(config_file)
 riddle_manager = config_loader.get_riddle_manager()
 
+login_manager = LoginManager(app)
+login_manager.login_view = "admin_login"
+
+# --- new: admin blueprint and centralized before_request auth ---
+admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+@admin_bp.before_request
+def require_admin_login():
+    # allow static files and the login endpoint through
+    if request.endpoint == 'static':
+        return None
+    # admin_login is defined as an app route (see below) and must remain accessible
+    if request.endpoint == 'admin_login':
+        return None
+    # if already logged in allow
+    if current_user.is_authenticated:
+        return None
+    # otherwise redirect to login (preserve next)
+    return redirect(url_for("admin_login", next=request.path))
+
+# trivial single-user backed by env var
+class AdminUser(UserMixin):
+    id = "admin"
+
+@login_manager.user_loader
+def load_user(user_id):
+    if user_id == "admin":
+        return AdminUser()
+    return None
 
 @app.route("/")
 def riddle():
@@ -82,13 +113,13 @@ def reset():
     return redirect(url_for("riddle"))
 
 
-@app.route("/admin/reset")
+@admin_bp.route("/reset")
 def reset_admin_page():
     riddle_manager.reset_progress()
     return redirect((url_for("progress")))
 
 
-@app.route("/admin/progress")
+@admin_bp.route("/progress")
 def progress():
     return render_template(
         "progress.html.j2",
@@ -99,7 +130,7 @@ def progress():
     )
 
 
-@app.route("/admin/questions")
+@admin_bp.route("/questions")
 def admin_questions():
     # list riddles
     riddles = []
@@ -110,12 +141,12 @@ def admin_questions():
     return render_template("admin_questions.html.j2", riddles=riddles, total_count=total_count)
 
 
-@app.route("/admin/questions/new")
+@admin_bp.route("/questions/new")
 def admin_new_question():
     return render_template("admin_edit.html.j2", action="create", riddle=None)
 
 
-@app.route("/admin/questions/create", methods=["POST"])
+@admin_bp.route("/questions/create", methods=["POST"])
 def admin_create_question():
     payload = {
         "question": request.form.get("question", ""),
@@ -131,7 +162,7 @@ def admin_create_question():
     return redirect(url_for("admin_questions"))
 
 
-@app.route("/admin/questions/edit/<int:index>")
+@admin_bp.route("/questions/edit/<int:index>")
 def admin_edit_question(index):
     try:
         r = config_loader.get_riddles()[index]
@@ -148,7 +179,7 @@ def admin_edit_question(index):
     return render_template("admin_edit.html.j2", action="update", riddle=riddle, total_count=total_count)
 
 
-@app.route("/admin/questions/update/<int:index>", methods=["POST"])
+@admin_bp.route("/questions/update/<int:index>", methods=["POST"])
 def admin_update_question(index):
     payload = {
         "question": request.form.get("question", ""),
@@ -163,7 +194,7 @@ def admin_update_question(index):
     return redirect(url_for("admin_questions"))
 
 
-@app.route("/admin/questions/delete/<int:index>", methods=["POST"])
+@admin_bp.route("/questions/delete/<int:index>", methods=["POST"])
 def admin_delete_question(index):
     config_loader.delete_riddle(index)
     riddle_manager.riddles = config_loader.get_riddles()
@@ -176,7 +207,7 @@ def admin_delete_question(index):
     return redirect(url_for("admin_questions"))
 
 
-@app.route("/admin/questions/move/<int:index>/<direction>", methods=["POST"])
+@admin_bp.route("/questions/move/<int:index>/<direction>", methods=["POST"])
 def admin_move_question(index, direction):
     try:
         rc = config_loader.get_riddles()
@@ -202,7 +233,7 @@ def admin_move_question(index, direction):
     return redirect(url_for("admin_questions"))
 
 
-@app.route("/admin/questions/download")
+@admin_bp.route("/questions/download")
 def admin_download_questions():
     try:
         rc = config_loader.get_riddles()
@@ -227,11 +258,12 @@ def admin_download_questions():
         return redirect(url_for("admin_questions"))
 
 
-@app.route("/admin")
+@admin_bp.route("/")
 def admin_index():
     return render_template("admin_index.html.j2")
 
-@app.route("/admin/upload", methods=["POST"])
+
+@admin_bp.route("/upload", methods=["POST"])
 def admin_upload():
     file = request.files.get("file")
     if not file:
@@ -250,6 +282,24 @@ def admin_upload():
         logging.exception("Failed to upload new game file")
     return redirect(url_for("admin_questions"))
 
+
+@app.route("/admin/login", methods=["GET","POST"])
+def admin_login():
+    if request.method == "POST":
+        user = request.form["user"]
+        pw = request.form["password"]
+        admin_user = os.getenv("ADMIN_USER")
+        admin_pass_hash = os.getenv("ADMIN_PASS_HASH")
+        # require both env vars to be set and validate hash
+        if admin_user and admin_pass_hash and user == admin_user and check_password_hash(admin_pass_hash, pw):
+            login_user(AdminUser())
+            return redirect(url_for("admin_index"))
+        return "Bad credentials", 403
+    return render_template("admin_login.html.j2")
+
+
+# register admin blueprint
+app.register_blueprint(admin_bp)
 
 if __name__ == "__main__":
     logging.info("Starting vermuten...")
