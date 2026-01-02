@@ -286,16 +286,24 @@ def admin_upload():
 
 @app.route("/admin/login", methods=["GET","POST"])
 def admin_login():
+    # preserve next param from query (GET) or form (POST)
+    next_url = request.args.get("next") or request.form.get("next") or ""
+
     if request.method == "POST":
-        user = request.form["user"]
-        pw = request.form["password"]
+        user = request.form.get("user", "")
+        pw = request.form.get("password", "")
         admin_user = os.getenv("ADMIN_USER")
         admin_pass_hash = os.getenv("ADMIN_PASS_HASH")
         # require both env vars to be set and validate hash
         if admin_user and admin_pass_hash and user == admin_user and check_password_hash(admin_pass_hash, pw):
             login_user(AdminUser())
+            # only redirect to a safe relative path
+            if next_url and next_url.startswith("/"):
+                return redirect(next_url)
             return redirect(url_for("admin_index"))
-        return "Bad credentials", 403
+        # failed login: re-render with an error flag (or you can flash)
+        return redirect(url_for("admin_login", next=next_url, error=1))
+
     return render_template("admin_login.html.j2")
 
 
