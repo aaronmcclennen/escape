@@ -8,9 +8,9 @@
   <h1>Admin Menu</h1>
 
   <div class="center" style="margin-bottom:12px;">
-    <a href="{{ url_for('admin_questions') }}" class="button">Manage Questions</a>
-    <a href="{{ url_for('progress') }}" class="button">Progress</a>
-    <a href="{{ url_for('admin_download_questions') }}" class="button" download="riddles.json">Download JSON</a>
+    <a href="{{ url_for('admin.admin_questions') }}" class="button">Manage Questions</a>
+    <a href="{{ url_for('admin.progress') }}" class="button">Progress</a>
+    <a href="{{ url_for('admin.admin_download_questions') }}" class="button" download="riddles.json">Download JSON</a>
   </div>
 
   <h2>Upload new game (JSON)</h2>
