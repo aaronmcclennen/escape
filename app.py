@@ -9,6 +9,7 @@ from flask import jsonify
 from flask import Blueprint
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
+from application.JsonLoader import ConfigLoader
 
 logging_format = (
     "%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s"
