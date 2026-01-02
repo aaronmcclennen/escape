@@ -17,7 +17,7 @@
   <p>Choose a riddles JSON file to replace the current game. The file will overwrite the configured config file.</p>
 
   <!-- Upload form: single button opens file dialog then auto-submits -->
-  <form id="upload-form" action="{{ url_for('admin_upload') }}" method="post" enctype="multipart/form-data" style="margin-bottom:12px;">
+  <form id="upload-form" action="{{ url_for('admin.admin_upload') }}" method="post" enctype="multipart/form-data" style="margin-bottom:12px;">
     <input id="game-file-input" type="file" name="file" accept=".json,application/json" style="display:none;">
     <label for="game-file-input" class="button" style="cursor:pointer; margin-right:8px;">Choose and Upload</label>
     <span id="selected-filename" style="margin-left:8px;">No file chosen</span>
@@ -41,7 +41,7 @@
   </script>
 
   <div style="margin-top:18px;">
-    <a href="{{ url_for('admin_questions') }}" class="button">Back to Questions</a>
+    <a href="{{ url_for('admin.admin_questions') }}" class="button">Back to Questions</a>
   </div>
 </body>
 </html>
