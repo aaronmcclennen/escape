@@ -17,12 +17,17 @@ logging_format = (
 logging.basicConfig(level=logging.INFO, format=logging_format)
 
 app = Flask(__name__)
+# set secret for session/cookie signing — read from env; fallback only for local dev
+app.secret_key = os.getenv("FLASK_SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret-change-me"))
+
+login_manager = LoginManager(app)
+login_manager.login_view = "admin_login"
+
+#load configured question file
 config_file = os.getenv("VERMUTEN_CONFIG")
 config_loader = ConfigLoader(config_file)
 riddle_manager = config_loader.get_riddle_manager()
 
-login_manager = LoginManager(app)
-login_manager.login_view = "admin_login"
 
 # --- new: admin blueprint and centralized before_request auth ---
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
