@@ -1,5 +1,7 @@
 import logging
 import random
+import secrets
+import string
 
 
 class RiddleException(Exception):
@@ -105,3 +107,100 @@ class RiddleManager(object):
         self.current_riddle_index = 0
         for riddle_id, riddle in self.riddles.items():
             riddle.reset_attempts()
+
+
+class Game(object):
+    # possible states
+    STATE_EDITING = "editing"
+    STATE_READY = "ready"
+    STATE_IN_PROGRESS = "in_progress"
+
+    def __init__(self, name, riddles):
+        self.name = name
+        self.riddles = riddles
+        self.current_riddle_index = 0
+        # state: editing | ready | in_progress
+        self.state = self.STATE_READY
+        # entry_code is only meaningful when state == in_progress
+        self.entry_code = None
+
+    def _generate_entry_code(self, length: int = 6) -> str:
+        alphabet = string.ascii_letters + string.digits
+        return "".join(secrets.choice(alphabet) for _ in range(length))
+
+    def get_current_riddle(self):
+        try:
+            return self.riddles[self.current_riddle_index]
+        except KeyError:
+            logging.info("There are no more riddles. Returning None to caller.")
+            return None
+
+    def get_current_riddle_number(self):
+        return self.current_riddle_index + 1
+
+    def next_riddle(self):
+        self.current_riddle_index += 1
+
+    def get_total_attempt_count(self):
+        attempts = 0
+        for riddle_id, riddle in self.riddles.items():
+            attempts += riddle.get_attempts()
+        return attempts
+
+    def get_completion_message(self):
+        return self.riddles[0].get_completion_message()
+
+    def get_completion_image_name(self):
+        return self.riddles[0].get_completion_image_name()
+
+    def get_riddle_count(self):
+        return len(self.riddles)
+
+    def reset_progress(self):
+        logging.warning("Resetting progress and attempt counts.")
+        self.current_riddle_index = 0
+        # reset attempts for each riddle (support dict or list)
+        try:
+            if isinstance(self.riddles, dict):
+                iterable = self.riddles.values()
+            else:
+                iterable = self.riddles
+            for r in iterable:
+                try:
+                    r.reset_attempts()
+                except Exception:
+                    pass
+        except Exception:
+            logging.exception("Failed while resetting riddle attempts")
+        # entry_code only applies if game is in progress
+        if self.state == self.STATE_IN_PROGRESS:
+            self.entry_code = self._generate_entry_code()
+        else:
+            self.entry_code = None
+
+    # state transitions
+    def start(self):
+        """Mark game in_progress, generate an entry code and reset progress."""
+        self.state = self.STATE_IN_PROGRESS
+        self.reset_progress()
+
+    def stop(self):
+        """Stop an in-progress game and mark it ready; clear entry code."""
+        self.state = self.STATE_READY
+        self.entry_code = None
+
+    def mark_ready(self):
+        """Mark game ready for starting (no entry code)."""
+        self.state = self.STATE_READY
+        self.entry_code = None
+
+    def mark_editing(self):
+        """Mark game editable (no entry code)."""
+        self.state = self.STATE_EDITING
+        self.entry_code = None
+
+    def is_in_progress(self) -> bool:
+        return self.state == self.STATE_IN_PROGRESS
+
+    def get_entry_code(self):
+        return self.entry_code
