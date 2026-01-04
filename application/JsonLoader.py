@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from application.Riddle import Riddle, RiddleManager
+from application.Riddle import Riddle, RiddleManager, Game
 
 
 class ConfigLoadException(Exception):
@@ -44,6 +44,14 @@ class ConfigLoader(object):
                     self.completion_image_name,
                 )
                 self.riddle_collection[len(self.riddle_collection)] = riddle_object
+            # determine game name: use top-level "name" if present, otherwise filename without extension
+            file_base = os.path.splitext(os.path.basename(self.path_to_json_config))[0]
+            game_name = json_config.get("name") or file_base
+            # build ordered riddle list for Game
+            riddles_list = [self.riddle_collection[i] for i in range(len(self.riddle_collection))]
+            # expose Game object
+            self.game = Game(game_name, riddles_list)
+
             logging.info(f"Successfully loaded {self.path_to_json_config}.")
             logging.info(f"Riddle count: {len(self.riddle_collection)}")
             logging.info(f"Incorrect response count: {len(self.incorrect_responses)}")
