@@ -204,3 +204,69 @@ class Game(object):
 
     def get_entry_code(self):
         return self.entry_code
+
+
+import bisect
+from typing import Iterable, List, Optional
+
+
+class Games(object):
+    """
+    Container for Game objects. Keeps the internal list sorted by game.name (case-insensitive).
+    get_all() returns a shallow copy of the current list.
+    """
+
+    def __init__(self, games: Optional[Iterable[Game]] = None):
+        self._games: List[Game] = []
+        if games:
+            for g in games:
+                self.add(g)
+
+    def _key(self, game: Game) -> str:
+        return (getattr(game, "name", "") or "").lower()
+
+    def add(self, game: Game) -> None:
+        """Insert game keeping the list sorted by name (case-insensitive)."""
+        key = self._key(game)
+        keys = [self._key(g) for g in self._games]
+        pos = bisect.bisect_left(keys, key)
+        self._games.insert(pos, game)
+
+    def remove(self, game_or_name) -> bool:
+        """Remove by object or by name. Returns True if removed, False otherwise."""
+        name = None
+        if isinstance(game_or_name, Game):
+            target = game_or_name
+            try:
+                self._games.remove(target)
+                return True
+            except ValueError:
+                return False
+        else:
+            name = (str(game_or_name) or "").lower()
+            for i, g in enumerate(self._games):
+                if self._key(g) == name:
+                    del self._games[i]
+                    return True
+            return False
+
+    def find(self, name: str) -> Optional[Game]:
+        """Return first game matching name (case-insensitive) or None."""
+        target = (name or "").lower()
+        for g in self._games:
+            if self._key(g) == target:
+                return g
+        return None
+
+    def get_all(self) -> List[Game]:
+        """Return a shallow copy of the sorted games list."""
+        return list(self._games)
+
+    def __iter__(self):
+        return iter(self.get_all())
+
+    def __len__(self):
+        return len(self._games)
+
+    def clear(self):
+        self._games.clear()

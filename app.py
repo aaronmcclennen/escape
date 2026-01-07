@@ -1,5 +1,6 @@
 import os
 import logging
+from escape.application.Riddle import Games
 from flask import Flask
 from flask import request
 from flask import redirect
@@ -27,7 +28,8 @@ login_manager.login_view = "admin_login"
 config_file = os.getenv("VERMUTEN_CONFIG")
 config_loader = ConfigLoader(config_file)
 riddle_manager = config_loader.get_riddle_manager()
-
+games = Games()
+games.add(config_loader.game)
 
 # --- new: admin blueprint and centralized before_request auth ---
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")

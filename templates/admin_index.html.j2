@@ -13,6 +13,22 @@
     <a href="{{ url_for('admin.admin_download_questions') }}" class="button" download="riddles.json">Download JSON</a>
   </div>
 
+  <!-- Games selection (display name shown in the box) -->
+  <div class="box" style="max-width:720px;margin:12px auto;padding:12px;border:1px solid #ddd;">
+    <h3>Available Games</h3>
+    {% if games %}
+      <label for="game-select">Select a game:</label>
+      <select id="game-select" name="game" style="width:100%;padding:8px;margin-top:6px;">
+        {% for g in games %}
+          <option value="{{ g.filename }}">{{ g.name }}</option>
+        {% endfor %}
+      </select>
+      <p style="margin-top:8px;font-size:90%;">(Activation/management will be available in admin tools.)</p>
+    {% else %}
+      <p>No games found in the configured games directory.</p>
+    {% endif %}
+  </div>
+
   <h2>Upload new game (JSON)</h2>
   <p>Choose a riddles JSON file to replace the current game. The file will overwrite the configured config file.</p>
 
