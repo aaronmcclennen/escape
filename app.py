@@ -268,7 +268,8 @@ def admin_download_questions():
 
 @admin_bp.route("/")
 def admin_index():
-    return render_template("admin_index.html.j2")
+    # provide a shallow copy of the sorted games list for the template to iterate
+    return render_template("admin_index.html.j2", games=games.get_all())
 
 
 @admin_bp.route("/upload", methods=["POST"])
