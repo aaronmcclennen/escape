@@ -1,6 +1,6 @@
 import os
 import logging
-from escape.application.Riddle import Games
+from application.Riddle import Games
 from flask import Flask
 from flask import request
 from flask import redirect
