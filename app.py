@@ -1,6 +1,6 @@
 import os
 import logging
-from application.Riddle import Games
+from application.Riddle import Game, Games
 from flask import Flask
 from flask import request
 from flask import redirect
@@ -140,13 +140,13 @@ def progress():
 
 @admin_bp.route("/questions")
 def admin_questions():
-    # list riddles
-    riddles = []
-    for i in range(len(config_loader.get_riddles())):
-        r = config_loader.get_riddles()[i]
-        riddles.append({"id": i, "question": r.get_riddle(), "answer": r.answer, "hint": r.get_hint(), "image_name": r.get_image_name()})
-    total_count = len(config_loader.get_riddles())
-    return render_template("admin_questions.html.j2", riddles=riddles, total_count=total_count)
+    # prefer the Game object produced by the ConfigLoader
+    game = config_loader.game
+    if game is None:
+        # fallback to legacy behaviour (list of riddle dicts)
+        game = Game()
+    total_count = game.get_riddle_count() 
+    return render_template("admin_questions.html.j2", game=game, total_count=total_count)
 
 
 @admin_bp.route("/questions/new")

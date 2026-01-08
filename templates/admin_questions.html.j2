@@ -13,35 +13,43 @@
   <a href="/admin/questions/download" class="button" download="riddles.json">Download JSON</a>
 </div>
 
+      <!-- Editable name for the game  -->
+      <form method="post" action="{{ url_for('admin.admin_update_game_name') }}" style="margin-top:12px;">
+        <label for="game-name">Active game name</label>
+        <input id="game-name" name="name" type="text" value="{{ games[0].name }}" style="width:100%;padding:8px;margin-top:6px;">
+        <div style="margin-top:8px;">
+          <button type="submit" class="button">Save Game Name</button>
+        </div>
+      </form>
 <ul>
-  {% for q in riddles %}
-    <li>
-      <strong>({{ q.id }}) {{ q.question }}</strong><br>
-      <em>Answer(s):</em> {{ q.answer|join(", ") }}<br>
-      <em>Hint:</em> {{ q.hint }}<br>
-      <em>Image:</em> {{ q.image_name }}<br>
+    {% for r in game.riddles %}
+      {% set idx = loop.index0 %}
+      <li>
+        <strong>({{ idx }}) {{ r.get_riddle() }}</strong><br>
+        <em>Answer(s):</em> {{ r.answer|join(", ") }}<br>
+        <em>Hint:</em> {{ r.get_hint() }}<br>
+        <em>Image:</em> {{ r.get_image_name() }}<br>
 
-      {# Move controls: hide Up for first, Down for last #}
-      {% if q.id > 0 %}
-        <form action="/admin/questions/move/{{ q.id }}/up" method="post" style="display:inline">
-          <button type="submit">Move Up</button>
-        </form>
-      {% endif %}
-      {% if q.id < total_count - 1 %}
-        <form action="/admin/questions/move/{{ q.id }}/down" method="post" style="display:inline">
-          <button type="submit">Move Down</button>
-        </form>
-      {% endif %}
+        {# Move controls: hide Up for first, Down for last #}
+        {% if idx > 0 %}
+          <form action="/admin/questions/move/{{ idx }}/up" method="post" style="display:inline">
+            <button type="submit">Move Up</button>
+          </form>
+        {% endif %}
+        {% if idx < total_count - 1 %}
+          <form action="/admin/questions/move/{{ idx }}/down" method="post" style="display:inline">
+            <button type="submit">Move Down</button>
+          </form>
+        {% endif %}
 
-      <form action="/admin/questions/edit/{{ q.id }}" method="get" style="display:inline">
-        <button type="submit">Edit</button>
-      </form>
-      <form action="/admin/questions/delete/{{ q.id }}" method="post" style="display:inline" onsubmit="return confirm('Delete question?')">
-        <button type="submit">Delete</button>
-      </form>
-    </li>
-    <hr>
-  {% endfor %}
+        <form action="/admin/questions/edit/{{ idx }}" method="get" style="display:inline">
+          <button type="submit">Edit</button>
+        </form>
+        <form action="/admin/questions/delete/{{ idx }}" method="post" style="display:inline" onsubmit="return confirm('Delete question?')">
+          <button type="submit">Delete</button>
+        </form>
+      </li>
+    {% endfor %}
 </ul>
 
 </html>
