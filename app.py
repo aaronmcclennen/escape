@@ -140,13 +140,25 @@ def progress():
 
 @admin_bp.route("/questions", methods=["GET", "POST"])
 def admin_questions():
-     # prefer the Game object produced by the ConfigLoader
-     game = config_loader.game
-     if game is None:
-         # fallback to legacy behaviour (list of riddle dicts)
-         game = Game()
-     total_count = game.get_riddle_count() 
-     return render_template("admin_questions.html.j2", game=game, total_count=total_count)
+    # prefer the Game object produced by the ConfigLoader
+    game = getattr(config_loader, "game", None)
+    if game is None:
+        # fallback to legacy behaviour (list of riddle dicts)
+        game = Game()
+
+    if request.method == "POST":
+        new_name = (request.form.get("name") or "").strip()
+        if new_name:
+            # update the Game used by the page
+            game.name = new_name
+            # keep the ConfigLoader.game in sync if present
+            if getattr(config_loader, "game", None):
+                config_loader.game = game
+        # PRG: redirect after POST so the page reloads with the updated value
+        return redirect(url_for("admin.admin_questions"))
+
+    total_count = game.get_riddle_count()
+    return render_template("admin_questions.html.j2", game=game, total_count=total_count)
 
 
 @admin_bp.route("/questions/new")
