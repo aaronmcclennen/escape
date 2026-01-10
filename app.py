@@ -215,14 +215,11 @@ def admin_update_question(index):
 
 @admin_bp.route("/questions/delete/<int:index>", methods=["POST"])
 def admin_delete_question(index):
-    config_loader.delete_riddle(index)
-    riddle_manager.riddles = config_loader.get_riddles()
-    # ensure current index not out of range
-    if (
-        riddle_manager.get_current_riddle() is None
-        and riddle_manager.get_current_riddle_number() > riddle_manager.get_riddle_count()
-    ):
-        riddle_manager.reset_progress()
+    game = getattr(config_loader, "game", None)
+    if game is None:
+        game = Game()
+
+    game.remove_riddle_by_index(index)
     return redirect(url_for("admin.admin_questions"))
 
 
