@@ -138,15 +138,15 @@ def progress():
     )
 
 
-@admin_bp.route("/questions")
+@admin_bp.route("/questions", methods=["GET", "POST"])
 def admin_questions():
-    # prefer the Game object produced by the ConfigLoader
-    game = config_loader.game
-    if game is None:
-        # fallback to legacy behaviour (list of riddle dicts)
-        game = Game()
-    total_count = game.get_riddle_count() 
-    return render_template("admin_questions.html.j2", game=game, total_count=total_count)
+     # prefer the Game object produced by the ConfigLoader
+     game = config_loader.game
+     if game is None:
+         # fallback to legacy behaviour (list of riddle dicts)
+         game = Game()
+     total_count = game.get_riddle_count() 
+     return render_template("admin_questions.html.j2", game=game, total_count=total_count)
 
 
 @admin_bp.route("/questions/new")
