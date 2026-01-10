@@ -13,10 +13,10 @@
   <a href="/admin/questions/download" class="button" download="riddles.json">Download JSON</a>
 </div>
 
-      <!-- Editable name for the game  -->
-      <form method="post" action="{{ url_for('admin.admin_update_game_name') }}" style="margin-top:12px;">
+      <!-- Post back to the same page; name will be saved into the game object in-memory -->
+      <form method="post" action="{{ url_for('admin.admin_questions') }}" style="margin-top:12px;">
         <label for="game-name">Active game name</label>
-        <input id="game-name" name="name" type="text" value="{{ games[0].name }}" style="width:100%;padding:8px;margin-top:6px;">
+        <input id="game-name" name="name" type="text" value="{{ game.name }}" style="width:100%;padding:8px;margin-top:6px;">
         <div style="margin-top:8px;">
           <button type="submit" class="button">Save Game Name</button>
         </div>
