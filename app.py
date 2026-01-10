@@ -143,7 +143,6 @@ def admin_questions():
     # prefer the Game object produced by the ConfigLoader
     game = getattr(config_loader, "game", None)
     if game is None:
-        # fallback to legacy behaviour (list of riddle dicts)
         game = Game()
 
     if request.method == "POST":
@@ -230,12 +229,14 @@ def admin_delete_question(index):
 @admin_bp.route("/questions/move/<int:index>/<direction>", methods=["POST"])
 def admin_move_question(index, direction):
     try:
-        rc = config_loader.get_riddles()
-        n = len(rc)
+        game = getattr(config_loader, "game", None)
+        if game is None:
+            game = Game()
+
+        lst = list(game.riddles)
+        n = len(lst)
         if index < 0 or index >= n:
             raise Exception("index out of range")
-        # make ordered list
-        lst = [rc[i] for i in range(n)]
         if direction == "up" and index > 0:
             lst[index - 1], lst[index] = lst[index], lst[index - 1]
         elif direction == "down" and index < n - 1:
@@ -243,11 +244,10 @@ def admin_move_question(index, direction):
         else:
             # nothing to do
             return redirect(url_for("admin.admin_questions"))
+        # update the Game object and persist via ConfigLoader structures
+        game.riddles = lst
         # rebuild dict with 0..n-1 keys and persist
         new = {i: r for i, r in enumerate(lst)}
-        config_loader.riddle_collection = new
-        config_loader.save_config()
-        riddle_manager.riddles = config_loader.get_riddles()
     except Exception:
         logging.exception("Failed to move riddle")
     return redirect(url_for("admin.admin_questions"))
