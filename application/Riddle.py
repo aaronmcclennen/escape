@@ -224,7 +224,7 @@ class Game(object):
     def get_entry_code(self):
         return self.entry_code
 
-    def to_json(self) -> str:
+    def to_json(self):
         """Convert the game state to a JSON-serializable format."""
         return {
             "name": self.name,
