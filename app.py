@@ -253,7 +253,8 @@ def admin_move_question(index, direction):
 @admin_bp.route("/questions/download")
 def admin_download_questions():
     try:
-        game_data = config_loader.game.to_json
+        #game_data = config_loader.game.to_json()
+        game_data = config_loader.game.get_current_riddle().to_json()
         
         import json
         from flask import make_response
