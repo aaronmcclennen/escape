@@ -232,6 +232,19 @@ class Game(object):
             "riddles": [riddle.to_json() for riddle in self.riddles] 
         }
 
+    def make_json_filename(self) -> str:
+        """
+        Construct a valid JSON file name based on the game's name.
+        If there is no name, use 'riddle.json'.
+        """
+        import re
+        base = self.name if self.name else "riddle"
+        # Replace spaces and non-alphanumeric characters with underscores
+        base = re.sub(r'[^A-Za-z0-9]+', '_', base).strip('_')
+        if not base:
+            base = "riddle"
+        return f"{base}.json"
+
 
 import bisect
 from typing import Iterable, List, Optional

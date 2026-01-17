@@ -253,22 +253,14 @@ def admin_move_question(index, direction):
 @admin_bp.route("/questions/download")
 def admin_download_questions():
     try:
-        rc = config_loader.get_riddles()
-        riddles = []
-        for i in range(len(rc)):
-            r = rc[i]
-            riddles.append({
-                "question": r.get_riddle(),
-                "answer": r.answer,
-                "hint": r.get_hint(),
-                "image_name": r.get_image_name(),
-            })
+        game_data = config_loader.game.to_json
+        
         import json
         from flask import make_response
-        response = make_response(json.dumps({"riddles": riddles}, indent=2))
+        response = make_response(json.dumps(game_data, indent=2))
         response.headers["Content-Type"] = "application/json"
         response.headers["Cache-Control"] = "no-cache"
-        response.headers["Content-Disposition"] = "attachment; filename=riddles.json"
+        response.headers["Content-Disposition"] = "attachment; filename="+config_loader.game.make_json_filename()
         return response
     except Exception:
         logging.exception("Failed to prepare download")
