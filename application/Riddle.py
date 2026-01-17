@@ -239,6 +239,7 @@ class Game(object):
         """
         import re
         base = self.name if self.name else "riddle"
+        logging.debug(f"Generating JSON filename from game name: {base}")
         # Replace spaces and non-alphanumeric characters with underscores
         base = re.sub(r'[^A-Za-z0-9]+', '_', base).strip('_')
         if not base:
