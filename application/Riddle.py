@@ -226,10 +226,14 @@ class Game(object):
 
     def to_json(self):
         """Convert the game state to a JSON-serializable format."""
+        if isinstance(self.riddles, dict):
+            jriddles = [riddle.to_json() for riddle in self.riddles.values()]
+            logging.debug("Converted riddles from dict to list for JSON serialization.")
+        else:
+            jriddles = [riddle.to_json() for riddle in self.riddles]
         return {
             "name": self.name,
-            # this assumes riddles is a list
-            "riddles": [riddle.to_json() for riddle in self.riddles] 
+            "riddles": jriddles
         }
 
     def make_json_filename(self) -> str:
