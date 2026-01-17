@@ -68,6 +68,15 @@ class Riddle(object):
     def get_random_correct_response(self):
         return random.choice(self.correct_responses)
 
+    def to_json(self):
+        """Convert the riddle to a JSON-serializable format."""
+        return {
+            "question": self.riddle,
+            "answer": self.answer,
+            "hint": self.hint,
+            "image_name": self.image_name,
+        }
+
 
 class RiddleManager(object):
     def __init__(self, riddles):
@@ -214,6 +223,14 @@ class Game(object):
 
     def get_entry_code(self):
         return self.entry_code
+
+    def to_json(self) -> str:
+        """Convert the game state to a JSON-serializable format."""
+        return {
+            "name": self.name,
+            # this assumes riddles is a list
+            "riddles": [riddle.to_json() for riddle in self.riddles] 
+        }
 
 
 import bisect
