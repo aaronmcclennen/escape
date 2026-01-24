@@ -134,14 +134,3 @@ class ConfigLoader(object):
         )
         self.riddle_collection[index] = r
         self.save_config()
-
-    def delete_riddle(self, index):
-        if index not in self.riddle_collection:
-            raise ConfigLoadException
-        # delete and reindex to keep 0..n-1
-        del self.riddle_collection[index]
-        new = {}
-        for i, (_, r) in enumerate(sorted(self.riddle_collection.items(), key=lambda it: int(it[0]))):
-            new[i] = r
-        self.riddle_collection = new
-        self.save_config()

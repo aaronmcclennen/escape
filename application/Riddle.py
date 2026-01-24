@@ -231,7 +231,8 @@ class Game(object):
             logging.debug("Converted riddles from dict to list for JSON serialization.")
         else:
             jriddles = [riddle.to_json() for riddle in self.riddles]
-            logging.debug("Converted riddles from list for JSON serialization.{}" .format(jriddles))
+            logging.debug("Converted riddles from list for JSON serialization." )
+            logging.debug("Riddles for JSON serialization: {}".format(jriddles))
         return {
             "name": self.name,
             "riddles": jriddles
