@@ -18,6 +18,7 @@ class ConfigLoader(object):
         self.completion_message = ""
         self.completion_image_name = ""
         self._load_config()
+        # _load_config creates the game object
 
     def _load_config(self):
         try:

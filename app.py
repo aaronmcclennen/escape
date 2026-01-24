@@ -208,8 +208,7 @@ def admin_update_question(index):
         "hint": request.form.get("hint", ""),
         "image_name": request.form.get("image_name", ""),
     }
-    config_loader.update_riddle(index, payload)
-    riddle_manager.riddles = config_loader.get_riddles()
+    config_loader.game.replace_riddle_at_index(index, payload)
     return redirect(url_for("admin.admin_questions"))
 
 

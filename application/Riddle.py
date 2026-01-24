@@ -197,6 +197,21 @@ class Game(object):
         else:
             raise RiddleException("Riddles are not stored in a list; cannot remove by index.")
         
+    def replace_riddle_at_index(self, index: int, new_riddle) -> None:
+        """
+        Replace the riddle at the given index with new_riddle.
+        If index is out of bounds, log an error and do nothing.
+        Supports both list and dict for self.riddles.
+        """
+        import logging
+        if isinstance(self.riddles, list):
+            if index < 0 or index >= len(self.riddles):
+                logging.error("replace_riddle_at_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
+                return
+            self.riddles[index] = new_riddle
+        else:
+            raise RiddleException("Riddles are not stored in a list; cannot remove by index.")
+
     # state transitions
     def start(self):
         """Mark game in_progress, generate an entry code and reset progress."""
