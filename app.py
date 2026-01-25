@@ -318,13 +318,16 @@ def admin_upload():
         return redirect(url_for("admin.admin_index"))
     try:
         # overwrite the configured JSON file with the uploaded file contents
-        global config_loader, riddle_manager
+        global config_loader
         target = config_loader.path_to_json_config
         # write bytes to preserve encoding; uploaded file may be binary stream
         with open(target, "wb") as f:
             f.write(file.read())
-        # reload config loader and riddle manager
+        # reload config loader
         config_loader = ConfigLoader(target)
+        # add the new game to the Games object
+        if hasattr(config_loader, "game") and config_loader.game is not None:
+            games.add(config_loader.game)
     except Exception:
         logging.exception("Failed to upload new game file")
     return redirect(url_for("admin.admin_questions"))
