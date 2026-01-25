@@ -162,6 +162,7 @@ def admin_questions():
 
     # Store the selected game in the user's server-side data store
     user_store["selected_game"] = selected_game
+    selected_game.mark_editing()
 
     # Handle POST to update game name
     if request.method == "POST":
@@ -298,6 +299,9 @@ def admin_download_questions():
 
 @admin_bp.route("/")
 def admin_index():
+    selected_game = get_selected_game()
+    if selected_game is not None:
+        selected_game.mark_ready()
     # provide a shallow copy of the sorted games list for the template to iterate
     return render_template("admin_index.html.j2", games=games.get_all())
 
