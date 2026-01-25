@@ -1,5 +1,6 @@
 import os
 import logging
+import uuid
 from application.Riddle import Game, Games, Riddle
 from flask import Flask
 from flask import request
@@ -8,6 +9,7 @@ from flask import url_for
 from flask import render_template
 from flask import jsonify
 from flask import Blueprint
+from flask import session
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from application.JsonLoader import ConfigLoader
@@ -32,6 +34,25 @@ games.add(config_loader.game)
 
 # --- new: admin blueprint and centralized before_request auth ---
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+
+# Global in-memory store for user data (not persistent, resets on server restart)
+USER_DATA = {}
+
+@app.before_request
+def ensure_user_id():
+    """Assign a unique user id to each session if not already present."""
+    if "user_id" not in session:
+        session["user_id"] = str(uuid.uuid4())
+    # Optionally, initialize their data dict if not present
+    if session["user_id"] not in USER_DATA:
+        USER_DATA[session["user_id"]] = {}
+
+def get_user_store():
+    """Get the dict for the current user's server-side data."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    return USER_DATA.setdefault(user_id, {})
 
 @admin_bp.before_request
 def require_admin_login():
@@ -330,6 +351,7 @@ def admin_login():
         return redirect(url_for("admin.admin_login", next=next_url, error=1))
 
     return render_template("admin_login.html.j2")
+
 
 
 # register admin blueprint
