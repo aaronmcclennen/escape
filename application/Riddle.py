@@ -225,6 +225,16 @@ class Game(object):
         else:
             raise RiddleException("Riddles are not stored in a list; cannot access by index.")
 
+    def add_riddle_at_end(self, new_riddle):
+        """
+        Add a new riddle to the end of the game's riddle list.
+        Supports both list and dict for self.riddles.
+        """
+        if isinstance(self.riddles, list):
+            self.riddles.append(new_riddle)
+        else:
+            raise RiddleException("Riddles are not stored in a list; cannot add new riddle.")
+
     # state transitions
     def start(self):
         """Mark game in_progress, generate an entry code and reset progress."""

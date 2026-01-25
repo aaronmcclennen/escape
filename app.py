@@ -175,9 +175,18 @@ def admin_create_question():
         "hint": request.form.get("hint", ""),
         "image_name": request.form.get("image_name", ""),
     }
-    config_loader.add_riddle(payload)
-    # sync in-memory manager
-    riddle_manager.riddles = config_loader.get_riddles()
+    new_riddle = Riddle(
+        payload["question"],
+        payload["answer"],
+        payload["hint"],
+        payload["image_name"],
+        [],  # correct_responses
+        [],  # incorrect_responses
+        "",  # completion_message
+        "",  # completion_image_name
+    )
+
+    config_loader.game.add_riddle_at_end(new_riddle)
     return redirect(url_for("admin.admin_questions"))
 
 
