@@ -160,24 +160,38 @@ def progress():
 
 @admin_bp.route("/questions", methods=["GET", "POST"])
 def admin_questions():
-    # prefer the Game object produced by the ConfigLoader
-    game = getattr(config_loader, "game", None)
-    if game is None:
-        game = Game()
+    # Get the user's data store
+    user_store = get_user_store()
 
+    # Determine selected game (by index or id, for example via ?game_id= or a form field)
+    game_id = request.args.get("game_id") or request.form.get("game_id")
+    selected_game = None
+
+    # Find the selected game from the games list
+    if game_id:
+        # games.get_all() should return a list of Game objects
+        for g in games.get_all():
+            # You may want to use a unique attribute, e.g. g.name or g.id
+            if str(getattr(g, "name", "")) == str(game_id):
+                selected_game = g
+                break
+    if not selected_game:
+        # fallback to the first game if none selected
+        selected_game = games.get_all()[0] if games.get_all() else Game()
+
+    # Store the selected game in the user's server-side data store
+    user_store["selected_game"] = selected_game
+
+    # Handle POST to update game name
     if request.method == "POST":
         new_name = (request.form.get("name") or "").strip()
         if new_name:
-            # update the Game used by the page
-            game.name = new_name
-            # keep the ConfigLoader.game in sync if present
-            if getattr(config_loader, "game", None):
-                config_loader.game = game
+            selected_game.name = new_name
         # PRG: redirect after POST so the page reloads with the updated value
-        return redirect(url_for("admin.admin_questions"))
+        return redirect(url_for("admin.admin_questions", game_id=selected_game.name))
 
-    total_count = game.get_riddle_count()
-    return render_template("admin_questions.html.j2", game=game, total_count=total_count)
+    total_count = selected_game.get_riddle_count()
+    return render_template("admin_questions.html.j2", game=selected_game, total_count=total_count)
 
 
 @admin_bp.route("/questions/new")
