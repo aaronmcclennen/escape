@@ -212,6 +212,19 @@ class Game(object):
         else:
             raise RiddleException("Riddles are not stored in a list; cannot remove by index.")
 
+    def get_riddle_at_index(self, index: int):
+        """
+        Return the riddle at the given index, or None if out of bounds.
+        """
+        if isinstance(self.riddles, list):
+            if 0 <= index < len(self.riddles):
+                return self.riddles[index]
+            else:
+                logging.error("get_riddle_at_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
+                return None
+        else:
+            raise RiddleException("Riddles are not stored in a list; cannot access by index.")
+
     # state transitions
     def start(self):
         """Mark game in_progress, generate an entry code and reset progress."""

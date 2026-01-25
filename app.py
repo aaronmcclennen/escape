@@ -184,7 +184,7 @@ def admin_create_question():
 @admin_bp.route("/questions/edit/<int:index>")
 def admin_edit_question(index):
     try:
-        r = config_loader.get_riddles()[index]
+        r = config_loader.game.get_riddle_at_index(index)
     except Exception:
         return redirect(url_for("admin.admin_questions"))
     riddle = {
@@ -194,7 +194,7 @@ def admin_edit_question(index):
         "hint": r.get_hint(),
         "image_name": r.get_image_name(),
     }
-    total_count = len(config_loader.get_riddles())
+    total_count = config_loader.game.get_riddle_count()
     return render_template("admin_edit.html.j2", action="update", riddle=riddle, total_count=total_count)
 
 
