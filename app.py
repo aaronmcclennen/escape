@@ -1,6 +1,6 @@
 import os
 import logging
-from application.Riddle import Game, Games
+from application.Riddle import Game, Games, Riddle
 from flask import Flask
 from flask import request
 from flask import redirect
@@ -208,7 +208,18 @@ def admin_update_question(index):
         "hint": request.form.get("hint", ""),
         "image_name": request.form.get("image_name", ""),
     }
-    config_loader.game.replace_riddle_at_index(index, payload)
+    # Create a Riddle object from the payload
+    new_riddle = Riddle(
+        payload["question"],
+        payload["answer"],
+        payload["hint"],
+        payload["image_name"],
+        [],  # correct_responses
+        [],  # incorrect_responses
+        "",  # completion_message
+        "",  # completion_image_name
+    )
+    config_loader.game.replace_riddle_at_index(index, new_riddle)
     return redirect(url_for("admin.admin_questions"))
 
 
