@@ -27,7 +27,6 @@ login_manager.login_view = "admin_login"
 #load configured question file
 config_file = os.getenv("VERMUTEN_CONFIG")
 config_loader = ConfigLoader(config_file)
-riddle_manager = config_loader.get_riddle_manager()
 games = Games()
 games.add(config_loader.game)
 
