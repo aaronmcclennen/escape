@@ -32,6 +32,10 @@ config_loader = ConfigLoader(config_file)
 games = Games()
 games.add(config_loader.game)
 
+def get_selected_game():
+    user_store = get_user_store()
+    return user_store.get("selected_game", None)
+
 # --- new: admin blueprint and centralized before_request auth ---
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -150,15 +154,11 @@ def admin_questions():
 
     # Find the selected game from the games list
     if game_id:
-        # games.get_all() should return a list of Game objects
-        for g in games.get_all():
-            # You may want to use a unique attribute, e.g. g.name or g.id
-            if str(getattr(g, "name", "")) == str(game_id):
-                selected_game = g
-                break
+        selected_game = games.find(game_id)
     if not selected_game:
         # fallback to the first game if none selected
         selected_game = games.get_all()[0] if games.get_all() else Game()
+        logging.info(f"Falling back to first game: {selected_game.name}. didn;'t find {game_id} ")
 
     # Store the selected game in the user's server-side data store
     user_store["selected_game"] = selected_game
