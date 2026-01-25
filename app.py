@@ -262,8 +262,6 @@ def admin_move_question(index, direction):
             return redirect(url_for("admin.admin_questions"))
         # update the Game object and persist via ConfigLoader structures
         game.riddles = lst
-        # rebuild dict with 0..n-1 keys and persist
-        new = {i: r for i, r in enumerate(lst)}
     except Exception:
         logging.exception("Failed to move riddle")
     return redirect(url_for("admin.admin_questions"))
@@ -307,7 +305,6 @@ def admin_upload():
             f.write(file.read())
         # reload config loader and riddle manager
         config_loader = ConfigLoader(target)
-        riddle_manager = config_loader.get_riddle_manager()
     except Exception:
         logging.exception("Failed to upload new game file")
     return redirect(url_for("admin.admin_questions"))

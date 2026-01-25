@@ -78,46 +78,6 @@ class Riddle(object):
         }
 
 
-class RiddleManager(object):
-    def __init__(self, riddles):
-        self.riddles = riddles
-        self.current_riddle_index = 0
-
-    def get_current_riddle(self):
-        try:
-            return self.riddles[self.current_riddle_index]
-        except KeyError:
-            logging.info("There are no more riddles. Returning None to caller.")
-            return None
-
-    def get_current_riddle_number(self):
-        return self.current_riddle_index + 1
-
-    def next_riddle(self):
-        self.current_riddle_index += 1
-
-    def get_total_attempt_count(self):
-        attempts = 0
-        for riddle_id, riddle in self.riddles.items():
-            attempts += riddle.get_attempts()
-        return attempts
-
-    def get_completion_message(self):
-        return self.riddles[0].get_completion_message()
-
-    def get_completion_image_name(self):
-        return self.riddles[0].get_completion_image_name()
-
-    def get_riddle_count(self):
-        return len(self.riddles)
-
-    def reset_progress(self):
-        logging.warning("Resetting progress and attempt counts.")
-        self.current_riddle_index = 0
-        for riddle_id, riddle in self.riddles.items():
-            riddle.reset_attempts()
-
-
 class Game(object):
     # possible states
     STATE_EDITING = "editing"
