@@ -201,14 +201,14 @@ def admin_create_question():
         "",  # completion_image_name
     )
 
-    config_loader.game.add_riddle_at_end(new_riddle)
+    get_selected_game().add_riddle_at_end(new_riddle)
     return redirect(url_for("admin.admin_questions"))
 
 
 @admin_bp.route("/questions/edit/<int:index>")
 def admin_edit_question(index):
     try:
-        r = config_loader.game.get_riddle_at_index(index)
+        r = get_selected_game().get_riddle_at_index(index)
     except Exception:
         return redirect(url_for("admin.admin_questions"))
     riddle = {
@@ -218,7 +218,7 @@ def admin_edit_question(index):
         "hint": r.get_hint(),
         "image_name": r.get_image_name(),
     }
-    total_count = config_loader.game.get_riddle_count()
+    total_count = get_selected_game().get_riddle_count()
     return render_template("admin_edit.html.j2", action="update", riddle=riddle, total_count=total_count)
 
 
@@ -243,15 +243,13 @@ def admin_update_question(index):
         "",  # completion_message
         "",  # completion_image_name
     )
-    config_loader.game.replace_riddle_at_index(index, new_riddle)
+    get_selected_game().replace_riddle_at_index(index, new_riddle)
     return redirect(url_for("admin.admin_questions"))
 
 
 @admin_bp.route("/questions/delete/<int:index>", methods=["POST"])
 def admin_delete_question(index):
-    game = getattr(config_loader, "game", None)
-    if game is None:
-        game = Game()
+    game = get_selected_game()
 
     game.remove_riddle_by_index(index)
     return redirect(url_for("admin.admin_questions"))
@@ -260,9 +258,7 @@ def admin_delete_question(index):
 @admin_bp.route("/questions/move/<int:index>/<direction>", methods=["POST"])
 def admin_move_question(index, direction):
     try:
-        game = getattr(config_loader, "game", None)
-        if game is None:
-            game = Game()
+        game = get_selected_game()
 
         lst = list(game.riddles)
         n = len(lst)
@@ -285,15 +281,15 @@ def admin_move_question(index, direction):
 @admin_bp.route("/questions/download")
 def admin_download_questions():
     try:
-        game_data = config_loader.game.to_json()
-        # the riddle json is good #game_data = config_loader.game.get_current_riddle().to_json()
+        game_data = get_selected_game().to_json()
+        # the riddle json is good #game_data = get_selected_game().get_current_riddle().to_json()
         
         import json
         from flask import make_response
         response = make_response(json.dumps(game_data, indent=2))
         response.headers["Content-Type"] = "application/json"
         response.headers["Cache-Control"] = "no-cache"
-        response.headers["Content-Disposition"] = "attachment; filename="+config_loader.game.make_json_filename()
+        response.headers["Content-Disposition"] = "attachment; filename="+get_selected_game().make_json_filename()
         return response
     except Exception:
         logging.exception("Failed to prepare download")
