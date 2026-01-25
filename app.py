@@ -114,25 +114,6 @@ def riddle():
         )
 
 
-@app.route("/data")
-def api_data():
-    current_riddle = riddle_manager.get_current_riddle()
-    if current_riddle is None:
-        game_over = True
-        return jsonify(game_over=game_over)
-    else:
-        riddle = current_riddle.get_riddle()
-        image_name = current_riddle.get_image_name()
-        riddle_id = riddle_manager.get_current_riddle_number()
-        hint = current_riddle.get_hint()
-        return jsonify(
-            riddle_id=f"Riddle #{riddle_id}",
-            riddle=riddle,
-            image_name=f"./static/{image_name}",
-            hint=f"Hint: {hint}",
-        )
-
-
 @app.route("/restart")
 def reset():
     current_riddle = riddle_manager.get_current_riddle()
