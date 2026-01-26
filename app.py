@@ -160,6 +160,13 @@ def admin_questions():
         selected_game = games.get_all()[0] if games.get_all() else Game()
         logging.info(f"Falling back to first game: {selected_game.name}. didn;'t find {game_id} ")
 
+    # Deny edit if another admin is already editing this game
+    # allow if the current user already has this game selected
+    current_user_selected = user_store.get("selected_game")
+    if selected_game.state == selected_game.STATE_EDITING and current_user_selected is not selected_game:
+        logging.info("admin_questions: denying edit, game %s already in STATE_EDITING", selected_game.name)
+        return redirect(url_for("admin.admin_index"))
+
     # Store the selected game in the user's server-side data store
     user_store["selected_game"] = selected_game
     selected_game.mark_editing()
