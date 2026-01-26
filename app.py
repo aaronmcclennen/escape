@@ -166,7 +166,7 @@ def admin_questions():
     current_user_selected = user_store.get("selected_game")
     if selected_game.state == selected_game.STATE_EDITING and current_user_selected is not selected_game:
         logging.info("admin_questions: denying edit, game %s already in STATE_EDITING", selected_game.name)
-        flash("Cannot edit — this game is currently being edited by another admin. Please try again later.", "error")
+        flash(f"Cannot edit — the game '{selected_game.name}' is currently being edited by another admin. Please try again later.", "error")
         return redirect(url_for("admin.admin_index"))
 
     # Store the selected game in the user's server-side data store
