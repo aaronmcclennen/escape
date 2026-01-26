@@ -149,6 +149,20 @@ def admin_questions():
     # Get the user's data store
     user_store = get_user_store()
 
+    # If admin requested creation of a new empty game via POST, create and select it.
+    if request.method == "POST" and request.form.get("create_new"):
+        new_name = (request.form.get("new_game_name") or "New Game").strip()
+        new_game = Game(new_name, [])
+        games.add(new_game)
+        # store and mark editing for this admin
+        user_store["selected_game"] = new_game
+        try:
+            new_game.mark_editing()
+        except Exception:
+            logging.exception("Failed to mark new game editing")
+        # redirect to questions page for the new game
+        return redirect(url_for("admin.admin_questions", game_id=new_game.name))
+
     # Determine selected game (by index or id, for example via ?game_id= or a form field)
     game_id = request.args.get("game_id") or request.form.get("game_id")
     selected_game = None
@@ -158,8 +172,8 @@ def admin_questions():
         selected_game = games.find(game_id)
     if not selected_game:
         # fallback to the first game if none selected
-        selected_game = games.get_all()[0] if games.get_all() else Game()
-        logging.info(f"Falling back to first game: {selected_game.name}. didn;'t find {game_id} ")
+        selected_game = games.get_all()[0] if games.get_all() else Game("Untitled", [])
+        logging.info(f"Falling back to first game: {selected_game.name}. didn't find {game_id} ")
 
     # Deny edit if another admin is already editing this game
     # allow if the current user already has this game selected
@@ -173,8 +187,8 @@ def admin_questions():
     user_store["selected_game"] = selected_game
     selected_game.mark_editing()
 
-    # Handle POST to update game name
-    if request.method == "POST":
+    # Handle POST to update game name (existing behavior)
+    if request.method == "POST" and request.form.get("name"):
         new_name = (request.form.get("name") or "").strip()
         if new_name:
             selected_game.name = new_name
