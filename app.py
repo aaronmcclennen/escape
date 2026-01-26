@@ -10,6 +10,7 @@ from flask import render_template
 from flask import jsonify
 from flask import Blueprint
 from flask import session
+from flask import flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from application.JsonLoader import ConfigLoader
@@ -165,6 +166,7 @@ def admin_questions():
     current_user_selected = user_store.get("selected_game")
     if selected_game.state == selected_game.STATE_EDITING and current_user_selected is not selected_game:
         logging.info("admin_questions: denying edit, game %s already in STATE_EDITING", selected_game.name)
+        flash("Cannot edit — this game is currently being edited by another admin. Please try again later.", "error")
         return redirect(url_for("admin.admin_index"))
 
     # Store the selected game in the user's server-side data store
