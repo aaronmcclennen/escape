@@ -418,35 +418,8 @@ def admin_start_game():
 
     # put staged game into this admin's user store and show active page
     user_store["selected_game"] = selected_game
-    return redirect(url_for("admin.admin_active_game", game_id=selected_game.name))
-
-
-@admin_bp.route("/active")
-def admin_admin_active():
-    """Show active game page with entry code."""
-    # accept game_id from query string
-    game_id = request.args.get("game_id")
-    selected_game = None
-
-    if game_id:
-        selected_game = games.find(game_id)
-        if not selected_game:
-            for g in games.get_all():
-                if getattr(g, "name", None) == game_id or getattr(g, "filename", None) == game_id:
-                    selected_game = g
-                    break
-
-    if not selected_game:
-        flash("Active game not found.", "error")
-        return redirect(url_for("admin.admin_index"))
-
-    # require that the game is staged (or staged/in_progress as appropriate)
-    if selected_game.state not in (selected_game.STATE_STAGED, selected_game.STATE_IN_PROGRESS):
-        flash(f"Game '{selected_game.name}' is not active.", "error")
-        return redirect(url_for("admin.admin_index"))
-
-    entry = selected_game.get_entry_code()
     return render_template("admin_active.html.j2", game=selected_game, entry_code=entry)
+
 # register admin blueprint
 app.register_blueprint(admin_bp)
 
