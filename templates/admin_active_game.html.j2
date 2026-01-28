@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+<head>
+  <title>Active Game - {{ game.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div style="max-width:720px;margin:24px auto;padding:16px;border:1px solid #ddd;">
+    <h2>Active Game: {{ game.name }}</h2>
+    <p>Entry code:</p>
+    <pre style="font-size:1.25em;padding:8px;border:1px solid #ccc;background:#fafafa;">{{ entry_code }}</pre>
+    <p style="margin-top:12px;">
+      <a href="{{ url_for('admin.admin_index') }}" class="button">Back to Admin</a>
+    </p>
+  </div>

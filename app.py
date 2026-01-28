@@ -37,6 +37,29 @@ def get_selected_game():
     user_store = get_user_store()
     return user_store.get("selected_game", None)
 
+def select_game_from_form():
+    """
+    Read game_id from the request (GET or POST) and return (selected_game, game_id).
+    Falls back to the first game or an empty Game if none available.
+    """
+    game_id = request.args.get("game_id") or request.form.get("game_id")
+    selected_game = None
+
+    if game_id:
+        # try Games.find first, then fall back to matching name or filename
+        selected_game = games.find(game_id)
+        if not selected_game:
+            for g in games.get_all():
+                if getattr(g, "name", None) == game_id or getattr(g, "filename", None) == game_id:
+                    selected_game = g
+                    break
+
+    if not selected_game:
+        selected_game = games.get_all()[0] if games.get_all() else Game("Untitled", [])
+        logging.info(f"Falling back to first game: {selected_game.name}. didn't find {game_id} ")
+
+    return selected_game, game_id
+
 # --- new: admin blueprint and centralized before_request auth ---
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
@@ -164,16 +187,7 @@ def admin_questions():
         return redirect(url_for("admin.admin_questions", game_id=new_game.name))
 
     # Determine selected game (by index or id, for example via ?game_id= or a form field)
-    game_id = request.args.get("game_id") or request.form.get("game_id")
-    selected_game = None
-
-    # Find the selected game from the games list
-    if game_id:
-        selected_game = games.find(game_id)
-    if not selected_game:
-        # fallback to the first game if none selected
-        selected_game = games.get_all()[0] if games.get_all() else Game("Untitled", [])
-        logging.info(f"Falling back to first game: {selected_game.name}. didn't find {game_id} ")
+    selected_game, game_id = select_game_from_form()
 
     # Deny edit if another admin is already editing this game
     # allow if the current user already has this game selected
@@ -380,6 +394,59 @@ def admin_login():
 
 
 
+@admin_bp.route("/start", methods=["POST"])
+def admin_start_game():
+    """Stage a READY game and show the active-game page with entry code."""
+    user_store = get_user_store()
+    selected_game, game_id = select_game_from_form()
+
+    if not selected_game:
+        flash("Selected game not found.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    # only READY games may be started/staged
+    if selected_game.state != selected_game.STATE_READY:
+        flash(f"Cannot start — the game '{selected_game.name}' is in state '{selected_game.state}'. Only games in state 'ready' may be started.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    try:
+        selected_game.mark_staged()
+    except Exception:
+        logging.exception("Failed to stage game %s", selected_game.name)
+        flash("Failed to stage the selected game.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    # put staged game into this admin's user store and show active page
+    user_store["selected_game"] = selected_game
+    return redirect(url_for("admin.admin_active_game", game_id=selected_game.name))
+
+
+@admin_bp.route("/active")
+def admin_admin_active():
+    """Show active game page with entry code."""
+    # accept game_id from query string
+    game_id = request.args.get("game_id")
+    selected_game = None
+
+    if game_id:
+        selected_game = games.find(game_id)
+        if not selected_game:
+            for g in games.get_all():
+                if getattr(g, "name", None) == game_id or getattr(g, "filename", None) == game_id:
+                    selected_game = g
+                    break
+
+    if not selected_game:
+        flash("Active game not found.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    # require that the game is staged (or staged/in_progress as appropriate)
+    if selected_game.state not in (selected_game.STATE_STAGED, selected_game.STATE_IN_PROGRESS):
+        flash(f"Game '{selected_game.name}' is not active.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    entry = selected_game.get_entry_code()
+    return render_template("admin_active.html.j2", game=selected_game, entry_code=entry)
 # register admin blueprint
 app.register_blueprint(admin_bp)
 
