@@ -198,7 +198,11 @@ class Game(object):
 
     # state transitions
     def start(self):
-        """Mark game in_progress, generate an entry code and reset progress."""
+        """Mark game in_progress and reset progress.
+        Only allowed when the game is currently STATE_STAGED.
+        """
+        if self.state != self.STATE_STAGED:
+            raise RiddleException(f"Cannot start game from state '{self.state}'; only '{self.STATE_STAGED}' may start.")
         self.state = self.STATE_IN_PROGRESS
         self.reset_progress()
 
@@ -229,7 +233,10 @@ class Game(object):
         self.entry_code = self._generate_entry_code()
 
     def is_in_progress(self) -> bool:
-        return self.state == self.STATE_IN_PROGRESS
+        """
+        Consider the game 'in progress' if it is either staged or in_progress.
+        """
+        return self.state in (self.STATE_STAGED, self.STATE_IN_PROGRESS)
 
     def get_entry_code(self):
         return self.entry_code
