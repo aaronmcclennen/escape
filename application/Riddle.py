@@ -83,6 +83,7 @@ class Game(object):
     STATE_EDITING = "editing"
     STATE_READY = "ready"
     STATE_IN_PROGRESS = "in_progress"
+    STATE_STAGED = "staged"
 
     def __init__(self, name, riddles):
         self.name = name
@@ -215,6 +216,17 @@ class Game(object):
         """Mark game editable (no entry code)."""
         self.state = self.STATE_EDITING
         self.entry_code = None
+
+    def mark_staged(self):
+        """
+        Move a ready game into the staged state.
+        Only allowed when the game is currently STATE_READY.
+        Raises RiddleException if the transition is not allowed.
+        """
+        if self.state != self.STATE_READY:
+            raise RiddleException(f"Cannot stage game from state '{self.state}'; only '{self.STATE_READY}' may be staged.")
+        self.state = self.STATE_STAGED
+        self.entry_code = self._generate_entry_code()
 
     def is_in_progress(self) -> bool:
         return self.state == self.STATE_IN_PROGRESS
