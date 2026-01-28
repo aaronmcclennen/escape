@@ -183,6 +183,11 @@ def admin_questions():
         flash(f"Cannot edit — the game '{selected_game.name}' is currently being edited by another admin. Please try again later.", "error")
         return redirect(url_for("admin.admin_index"))
 
+    if selected_game.s_in_progress():
+        logging.info("admin_questions: denying edit, game %s in progress (state=%s)", selected_game.name, selected_game.state)
+        flash(f"Cannot edit — the game '{selected_game.name}' is in state '{selected_game.state}'. Only games in state 'ready' may be edited.", "error")
+        return redirect(url_for("admin.admin_index"))
+
     # Store the selected game in the user's server-side data store
     user_store["selected_game"] = selected_game
     selected_game.mark_editing()
