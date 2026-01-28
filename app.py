@@ -418,7 +418,7 @@ def admin_start_game():
 
     # put staged game into this admin's user store and show active page
     user_store["selected_game"] = selected_game
-    return render_template("admin_active.html.j2", game=selected_game, entry_code=entry)
+    return render_template("admin_active.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
 
 # register admin blueprint
 app.register_blueprint(admin_bp)
