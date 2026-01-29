@@ -156,17 +156,6 @@ def reset_admin_page():
     return redirect((url_for("admin.progress")))
 
 
-@admin_bp.route("/progress")
-def progress():
-    return render_template(
-        "progress.html.j2",
-        current_riddle_number=riddle_manager.get_current_riddle_number(),
-        riddle_count=riddle_manager.get_riddle_count(),
-        current_riddle=riddle_manager.get_current_riddle().get_riddle(),
-        attempts=riddle_manager.get_total_attempt_count(),
-    )
-
-
 @admin_bp.route("/questions", methods=["GET", "POST"])
 def admin_questions():
     # Get the user's data store
@@ -343,7 +332,12 @@ def admin_download_questions():
 def admin_index():
     selected_game = get_selected_game()
     if selected_game is not None:
-        selected_game.mark_ready()
+        try:
+            # Do not force a READY state if the game is STAGED or IN_PROGRESS
+            if not selected_game.is_in_progress():
+                selected_game.mark_ready()
+        except Exception:
+            logging.exception("admin_index: failed to update selected game state")
     # provide a shallow copy of the sorted games list for the template to iterate
     return render_template("admin_index.html.j2", games=games.get_all())
 
