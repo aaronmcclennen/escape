@@ -3,67 +3,87 @@
 <head>
   <title>Admin Menu</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    /* small page-specific layout fixes to avoid obscured labels */
+    .container { max-width: 900px; margin: 18px auto; padding: 12px; }
+    .box { padding: 16px; border: 1px solid #ddd; border-radius: 6px; background: #fff; }
+    .box h3 { margin: 0 0 8px 0; font-size: 1.15em; }
+    label { display: block; margin-bottom: 6px; font-weight: 600; }
+    select { width: 100%; padding: 8px; font-size: 1em; box-sizing: border-box; }
+    .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .actions .button { padding: 8px 12px; }
+    .row { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; flex-wrap: wrap; }
+    .upload, .create { flex: 1 1 320px; }
+    .flash { max-width:720px; margin:12px auto 16px; padding:8px; }
+  </style>
 </head>
 <body>
-  <h1>Admin Menu</h1>
+  <div class="container">
 
-  {# display flashed messages #}
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      <div style="max-width:720px;margin:12px auto;padding:8px;">
-        {% for category, msg in messages %}
-          <div style="padding:10px;margin-bottom:8px;border-radius:4px;
-                      {% if category == 'error' %}background:#ffd6d6;border:1px solid #ff9b9b;{% else %}background:#e6ffea;border:1px solid #9be59b;{% endif %}">
-            {{ msg }}
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
-  {% endwith %}
+    <h1>Admin Menu</h1>
 
-  <div class="center" style="margin-bottom:12px;">
-    <form id="game-select-form" method="get" action="{{ url_for('admin.admin_questions') }}" style="display:inline;">
-      <div class="box" style="max-width:720px;margin:12px auto;padding:12px;border:1px solid #ddd;">
-        <h3>Available Games</h3>
-        {% if games %}
-          <label for="game-select">Select a game:</label>
-          <select id="game-select" name="game_id" style="width:100%;padding:8px;margin-top:6px;">
+    {# flashed messages #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash">
+          {% for category, msg in messages %}
+            <div style="padding:10px;margin-bottom:8px;border-radius:4px;
+                        {% if category == 'error' %}background:#ffd6d6;border:1px solid #ff9b9b;{% else %}background:#e6ffea;border:1px solid #9be59b;{% endif %}">
+              {{ msg }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <div class="box">
+      <h3>Available Games</h3>
+      {% if games %}
+        <form id="game-select-form" method="get" action="{{ url_for('admin.admin_questions') }}">
+          <label for="game-select">Select a game</label>
+          <select id="game-select" name="game_id" aria-label="Select game">
             {% for g in games %}
-              <option value="{{ g.name }}">{{ g.name }} - {{ g.state }}</option>
+              <option value="{{ g.name }}" {% if loop.first %}selected{% endif %}>{{ g.name }} — {{ g.state }}</option>
             {% endfor %}
           </select>
 
-          <div style="margin-top:12px;">
-            <button type="submit" class="button" style="margin-right:8px;">Manage Questions</button>
-            <button type="submit" class="button" formaction="{{ url_for('admin.admin_download_questions') }}" formmethod="get" style="margin-right:8px;">Download JSON</button>
+          <div class="actions">
+            <button type="submit" class="button">Manage Questions</button>
+            <button type="submit" class="button" formaction="{{ url_for('admin.admin_download_questions') }}" formmethod="get">Download JSON</button>
             <button type="submit" class="button" formaction="{{ url_for('admin.admin_start_game') }}" formmethod="post">Start Game</button>
+            <a href="{{ url_for('admin.progress') }}" class="button" style="margin-left:auto;">Progress</a>
           </div>
+        </form>
 
-          <p style="margin-top:8px;font-size:90%;">(Activation/management will be available in admin tools.)</p>
-        {% else %}
-          <p>No games found in the configured games directory.</p>
-        {% endif %}
+      {% else %}
+        <p>No games found in the configured games directory.</p>
+      {% endif %}
+    </div>
+
+    <div class="row">
+      <div class="upload box">
+        <h3>Upload new game (JSON)</h3>
+        <p>Choose a riddles JSON file to add to the game list. The file will overwrite the configured config file.</p>
+        <form id="upload-form" action="{{ url_for('admin.admin_upload') }}" method="post" enctype="multipart/form-data">
+          <input id="game-file-input" type="file" name="file" accept=".json,application/json" style="display:none;">
+          <label for="game-file-input" class="button" style="cursor:pointer;">Choose and Upload</label>
+          <span id="selected-filename" style="margin-left:8px;">No file chosen</span>
+        </form>
       </div>
-    </form>
-    <a href="{{ url_for('admin.progress') }}" class="button">Progress</a>
+
+      <div class="create box">
+        <h3>Create New Game</h3>
+        <form id="create-game-form" action="{{ url_for('admin.admin_questions') }}" method="post">
+          <input type="hidden" name="create_new" value="1">
+          <input type="text" name="new_game_name" placeholder="New game name (optional)" style="width:100%;padding:8px;margin-bottom:8px;">
+          <div>
+            <button type="submit" class="button">Create New Game</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
-
-  <h2>Upload new game (JSON)</h2>
-  <p>Choose a riddles JSON file to add to the game list. The file will overwrite the configured config file.</p>
-
-  <!-- Upload form: single button opens file dialog then auto-submits -->
-  <form id="upload-form" action="{{ url_for('admin.admin_upload') }}" method="post" enctype="multipart/form-data" style="margin-bottom:12px; display:inline-block;">
-    <input id="game-file-input" type="file" name="file" accept=".json,application/json" style="display:none;">
-    <label for="game-file-input" class="button" style="cursor:pointer; margin-right:8px;">Choose and Upload</label>
-    <span id="selected-filename" style="margin-left:8px;">No file chosen</span>
-  </form>
-
-  <!-- Create new empty game -->
-  <form id="create-game-form" action="{{ url_for('admin.admin_questions') }}" method="post" style="display:inline-block; margin-left:12px;">
-    <input type="hidden" name="create_new" value="1">
-    <input type="text" name="new_game_name" placeholder="New game name (optional)" style="padding:6px; margin-right:8px;">
-    <button type="submit" class="button">Create New Game</button>
-  </form>
 
   <script>
     (function(){
@@ -74,13 +94,9 @@
       input.addEventListener('change', function(){
         const name = input.files && input.files.length ? input.files[0].name : 'No file chosen';
         filenameSpan.textContent = name;
-        if (input.files && input.files.length) {
-          // auto-submit when a file is chosen
-          form.submit();
-        }
+        if (input.files && input.files.length) form.submit();
       });
     })();
   </script>
-
 </body>
 </html>
