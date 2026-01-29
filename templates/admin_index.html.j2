@@ -51,7 +51,6 @@
             <button type="submit" class="button">Manage Questions</button>
             <button type="submit" class="button" formaction="{{ url_for('admin.admin_download_questions') }}" formmethod="get">Download JSON</button>
             <button type="submit" class="button" formaction="{{ url_for('admin.admin_start_game') }}" formmethod="post">Start Game</button>
-            <a href="{{ url_for('admin.progress') }}" class="button" style="margin-left:auto;">Progress</a>
           </div>
         </form>
 
