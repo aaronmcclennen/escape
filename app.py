@@ -339,7 +339,8 @@ def admin_index():
         except Exception:
             logging.exception("admin_index: failed to update selected game state")
     # provide a shallow copy of the sorted games list for the template to iterate
-    return render_template("admin_index.html.j2", games=games.get_all())
+    # also pass the user's currently selected game so the template can show "Resume Game"
+    return render_template("admin_index.html.j2", games=games.get_all(), user_selected=selected_game)
 
 
 @admin_bp.route("/upload", methods=["POST"])
@@ -412,6 +413,20 @@ def admin_start_game():
 
     # put staged game into this admin's user store and show active page
     user_store["selected_game"] = selected_game
+    return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
+
+
+@admin_bp.route("/resume", methods=["POST"])
+def admin_resume_game():
+    """Resume the active game previously started by this admin (stored in their user store)."""
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game")
+    if not selected_game:
+        flash("No active game to resume.", "error")
+        return redirect(url_for("admin.admin_index"))
+    if selected_game.state not in (selected_game.STATE_STAGED, selected_game.STATE_IN_PROGRESS):
+        flash(f"Cannot resume — the game '{selected_game.name}' is not active.", "error")
+        return redirect(url_for("admin.admin_index"))
     return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
 
 # register admin blueprint

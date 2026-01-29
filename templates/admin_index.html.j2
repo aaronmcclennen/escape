@@ -50,7 +50,18 @@
           <div class="actions">
             <button type="submit" class="button">Manage Questions</button>
             <button type="submit" class="button" formaction="{{ url_for('admin.admin_download_questions') }}" formmethod="get">Download JSON</button>
-            <button type="submit" class="button" formaction="{{ url_for('admin.admin_start_game') }}" formmethod="post">Start Game</button>
+
+            {# If this admin has an active staged/in_progress game, show Resume button.
+               Otherwise show Start Game (acts on selected game in the dropdown). #}
+            {% if user_selected and user_selected.state in (user_selected.STATE_STAGED, user_selected.STATE_IN_PROGRESS) %}
+              <form action="{{ url_for('admin.admin_resume_game') }}" method="post" style="display:inline;margin-left:8px;">
+                <button type="submit" class="button">Resume Game</button>
+              </form>
+            {% else %}
+              <button type="submit" class="button" formaction="{{ url_for('admin.admin_start_game') }}" formmethod="post" style="margin-left:8px;">Start Game</button>
+            {% endif %}
+
+            <a href="{{ url_for('admin.progress') }}" class="button" style="margin-left:auto;">Progress</a>
           </div>
         </form>
 
