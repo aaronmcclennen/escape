@@ -106,8 +106,60 @@ def load_user(user_id):
         return AdminUser()
     return None
 
+from flask import Markup  # if not already imported
+
 @app.route("/")
+def index():
+    """
+    Show a list of staged or in-progress games on the index page.
+    """
+    staged_or_active = []
+    for g in games.get_all():
+        state = getattr(g, "state", None)
+        if g.is_in_progress():
+            staged_or_active.append(g)
+
+    return render_template("index_games.html.j2", games=staged_or_active)
+
+
+@app.route("/join", methods=["GET", "POST"])
+def join_game():
+    """
+    Join a staged or in-progress game. Accepts `game_id` as a query param or form field.
+    Stores the selected game in the user's server-side store and redirects back to index.
+    """
+    game_id = request.args.get("game_id") or request.form.get("game_id")
+    if not game_id:
+        flash("No game selected.", "error")
+        return redirect(url_for("index"))
+
+    # try find by id first, then fallback to name/filename
+    selected_game = games.find(game_id)
+    if not selected_game:
+        for g in games.get_all():
+            if getattr(g, "name", None) == game_id or getattr(g, "filename", None) == game_id:
+                selected_game = g
+                break
+
+    if not selected_game:
+        flash("Selected game not found.", "error")
+        return redirect(url_for("index"))
+
+    if selected_game.state not in (selected_game.STATE_STAGED, selected_game.STATE_IN_PROGRESS):
+        flash(f"Cannot join — the game '{selected_game.name}' is not active.", "error")
+        return redirect(url_for("index"))
+
+    user_store = get_user_store()
+    if user_store is None:
+        flash("Session error.", "error")
+        return redirect(url_for("index"))
+
+    user_store["selected_game"] = selected_game
+    flash(f"Joined game: {selected_game.name}", "info")
+    return redirect(url_for("index"))
+
 def riddle():
+    ''' for the page where riddles are answered'''
     guess = request.args.get("guess")
     current_riddle = riddle_manager.get_current_riddle()
     riddle_id = riddle_manager.get_current_riddle_number()

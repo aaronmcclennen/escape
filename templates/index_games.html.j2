@@ -1,0 +1,36 @@
+<!-- File: templates/index_games.html.j2 -->
+<!doctype html>
+<html>
+<head>
+  <title>Available Games</title>
+  <link rel="stylesheet" href="./static/style.css">
+</head>
+<body>
+  <h1>Active Games</h1>
+  {% if games %}
+    <ul>
+      {% for g in games %}
+        <li>
+          <strong>{{ g.name }}</strong>
+          {% if g.state %} &nbsp;(<em>{{ g.state }}</em>){% endif %}
+          <form action="{{ url_for('join_game') }}" method="post" style="display:inline">
+            <input type="hidden" name="game_id" value="{{ g.name }}">
+            <button type="submit" class="button">Join</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No active games at the moment.</p>
+  {% endif %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <ul class="flashes">
+        {% for category, msg in messages %}
+          <li class="{{ category }}">{{ msg }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+</body>
+</html>
