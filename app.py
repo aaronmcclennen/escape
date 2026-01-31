@@ -125,15 +125,17 @@ def index():
 @app.route("/join", methods=["GET", "POST"])
 def join_game():
     """
-    Join a staged or in-progress game. Accepts `game_id` as a query param or form field.
-    Stores the selected game in the user's server-side store and redirects back to index.
+    Join a staged or in-progress game. Requires `game_id` and `entry_code`.
+    Stores the selected game in the user's server-side store only after code validation.
     """
     game_id = request.args.get("game_id") or request.form.get("game_id")
+    entry_code = request.args.get("entry_code") or request.form.get("entry_code")
+
     if not game_id:
         flash("No game selected.", "error")
         return redirect(url_for("index"))
 
-    # try find by id first, then fallback to name/filename
+    # find selected game by id/name/filename
     selected_game = games.find(game_id)
     if not selected_game:
         for g in games.get_all():
@@ -147,6 +149,16 @@ def join_game():
 
     if selected_game.state not in (selected_game.STATE_STAGED, selected_game.STATE_IN_PROGRESS):
         flash(f"Cannot join — the game '{selected_game.name}' is not active.", "error")
+        return redirect(url_for("index"))
+
+    # Require entry code
+    if not entry_code:
+        flash("Game code required to join.", "error")
+        return redirect(url_for("index"))
+
+    expected_code = selected_game.get_entry_code()
+    if expected_code is None or entry_code != expected_code:
+        flash("Invalid game code.", "error")
         return redirect(url_for("index"))
 
     user_store = get_user_store()
