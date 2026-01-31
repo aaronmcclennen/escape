@@ -33,7 +33,7 @@ setInterval('refresh_riddle()', 5000);
 </h2>
 <img id="riddle_img" src="./static/{{ image_name }}">
 {% if not advance %}
-    <form action="/">
+    <form action="{{ url_for('riddle') }}" method="post">
       <label for="guess">Guess:</label>
       <input type="text" id="guess" name="guess" autocomplete="off">
       <input type="submit" value="Submit">
@@ -52,7 +52,7 @@ setInterval('refresh_riddle()', 5000);
 <br>
 {% if advance %}
 <div class="center">
-    <a href="/" class="button">Next Riddle</a>
+    <a href="{{ url_for('riddle') }}" class="button">Next Riddle</a>
 </div>
 {% endif %}
 <!--Hello clever kids! There is no client-side code, cache, or cookies that hold answers.-->
