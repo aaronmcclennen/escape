@@ -168,42 +168,80 @@ def join_game():
 
     user_store["selected_game"] = selected_game
     flash(f"Joined game: {selected_game.name}", "info")
-    return redirect(url_for("index"))
+    # on successful join, take user to the riddle (user game) page
+    return redirect(url_for("riddle"))
 
+
+@app.route("/riddle", methods=["GET", "POST"])
 def riddle():
-    ''' for the page where riddles are answered'''
-    guess = request.args.get("guess")
-    current_riddle = riddle_manager.get_current_riddle()
-    riddle_id = riddle_manager.get_current_riddle_number()
-    if guess is None and current_riddle is not None:
+    """
+    Show and handle the user-facing riddle page for the game selected in the user's store.
+    Handles guesses via query/form param `guess`. If no selected game, redirect to index.
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+
+    if not selected_game:
+        flash("No game selected.", "error")
+        return redirect(url_for("index"))
+
+    # get guess (support GET or POST)
+    guess = request.args.get("guess") or request.form.get("guess")
+
+    # use safe accessor that returns None if out of range
+    try:
+        current_riddle = selected_game.get_riddle_at_index(selected_game.current_riddle_index)
+    except Exception:
+        current_riddle = None
+
+    # If there is no current riddle -> game complete
+    if current_riddle is None:
+        return render_template(
+            "complete.html.j2",
+            completion_message=selected_game.get_completion_message(),
+            image_name=selected_game.get_completion_image_name(),
+            attempts=selected_game.get_total_attempt_count(),
+        )
+
+    # No guess submitted -> render current riddle
+    if not guess:
         return render_template(
             "user_game.j2",
-            riddle_id=riddle_id,
+            title=selected_game.name,
+            riddle_id=selected_game.get_current_riddle_number(),
             riddle=current_riddle.get_riddle(),
             image_name=current_riddle.get_image_name(),
             hint=current_riddle.get_hint(),
+            advance=False,
+            response=None,
         )
-    elif guess is not None and current_riddle is not None:
+
+    # Guess submitted -> evaluate
+    try:
         if current_riddle.test_answer(guess):
-            riddle_manager.next_riddle()
+            # advance to next riddle and redirect to show next (or completion)
+            selected_game.next_riddle()
             return redirect(url_for("riddle"))
         else:
+            # incorrect: show same riddle with a random incorrect response (if available)
+            try:
+                response = current_riddle.get_random_incorrect_response()
+            except Exception:
+                response = "Incorrect."
             return render_template(
                 "user_game.j2",
-                riddle_id=riddle_id,
+                title=selected_game.name,
+                riddle_id=selected_game.get_current_riddle_number(),
                 riddle=current_riddle.get_riddle(),
                 image_name=current_riddle.get_image_name(),
                 hint=current_riddle.get_hint(),
-                response=current_riddle.get_random_incorrect_response(),
+                response=response,
+                advance=False,
             )
-    else:
-        logging.info(riddle_manager.get_current_riddle())
-        return render_template(
-            "complete.html.j2",
-            completion_message=riddle_manager.get_completion_message(),
-            image_name=riddle_manager.get_completion_image_name(),
-            attempts=riddle_manager.get_total_attempt_count(),
-        )
+    except Exception:
+        logging.exception("Error while evaluating guess")
+        flash("Error processing your guess.", "error")
+        return redirect(url_for("riddle"))
 
 
 @app.route("/restart")
