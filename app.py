@@ -177,7 +177,7 @@ def riddle():
     riddle_id = riddle_manager.get_current_riddle_number()
     if guess is None and current_riddle is not None:
         return render_template(
-            "index.html.j2",
+            "user_game.j2",
             riddle_id=riddle_id,
             riddle=current_riddle.get_riddle(),
             image_name=current_riddle.get_image_name(),
@@ -189,7 +189,7 @@ def riddle():
             return redirect(url_for("riddle"))
         else:
             return render_template(
-                "index.html.j2",
+                "user_game.j2",
                 riddle_id=riddle_id,
                 riddle=current_riddle.get_riddle(),
                 image_name=current_riddle.get_image_name(),
