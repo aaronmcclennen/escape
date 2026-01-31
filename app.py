@@ -14,11 +14,20 @@ from flask import flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from application.JsonLoader import ConfigLoader
+import secrets  # new import near the other imports
 
 logging_format = (
     "%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s"
 )
 logging.basicConfig(level=logging.INFO, format=logging_format)
+
+# list of bird names used for display names
+BIRD_NAMES = [
+    "Sparrow", "Finch", "Robin", "Bluejay", "Cardinal", "Wren", "Warbler",
+    "Lark", "Oriole", "Nightingale", "Pipit", "Swallow", "Swift", "Kingfisher",
+    "Heron", "Egret", "Gull", "Tern", "Plover", "Sandpiper", "Albatross",
+    "Falcon", "Kestrel", "Hawk", "Eagle", "Crow", "Raven", "Magpie", "Pelican", "Dove"
+]
 
 app = Flask(__name__)
 # set secret for session/cookie signing — read from env; fallback only for local dev
@@ -68,12 +77,22 @@ USER_DATA = {}
 
 @app.before_request
 def ensure_user_id():
-    """Assign a unique user id to each session if not already present."""
+    """Assign a unique user id to each session and a bird display name on first visit."""
     if "user_id" not in session:
         session["user_id"] = str(uuid.uuid4())
-    # Optionally, initialize their data dict if not present
-    if session["user_id"] not in USER_DATA:
-        USER_DATA[session["user_id"]] = {}
+    user_id = session["user_id"]
+    if user_id not in USER_DATA:
+        USER_DATA[user_id] = {}
+    # assign a bird display name if not already present
+    store = USER_DATA[user_id]
+    if "display_name" not in store:
+        used = {s.get("display_name") for s in USER_DATA.values() if s.get("display_name")}
+        available = [b for b in BIRD_NAMES if b not in used]
+        if available:
+            store["display_name"] = secrets.choice(available)
+        else:
+            # fallback: reuse a bird with a short unique suffix
+            store["display_name"] = f"{secrets.choice(BIRD_NAMES)}-{user_id[:6]}"
 
 def get_user_store():
     """Get the dict for the current user's server-side data."""
@@ -81,6 +100,10 @@ def get_user_store():
     if not user_id:
         return None
     return USER_DATA.setdefault(user_id, {})
+
+def get_user_name():
+    store = get_user_store()
+    return store.get("display_name") if store else None
 
 @admin_bp.before_request
 def require_admin_login():
@@ -115,11 +138,10 @@ def index():
     """
     staged_or_active = []
     for g in games.get_all():
-        state = getattr(g, "state", None)
         if g.is_in_progress():
             staged_or_active.append(g)
 
-    return render_template("index_games.html.j2", games=staged_or_active)
+    return render_template("index_games.html.j2", games=staged_or_active, user_name=get_user_name())
 
 
 @app.route("/join", methods=["GET", "POST"])
@@ -174,10 +196,6 @@ def join_game():
 
 @app.route("/riddle", methods=["GET", "POST"])
 def riddle():
-    """
-    Show and handle the user-facing riddle page for the game selected in the user's store.
-    Handles guesses via query/form param `guess`. If no selected game, redirect to index.
-    """
     user_store = get_user_store()
     selected_game = user_store.get("selected_game") if user_store else None
 
@@ -185,25 +203,22 @@ def riddle():
         flash("No game selected.", "error")
         return redirect(url_for("index"))
 
-    # get guess (support GET or POST)
     guess = request.args.get("guess") or request.form.get("guess")
 
-    # use safe accessor that returns None if out of range
     try:
         current_riddle = selected_game.get_riddle_at_index(selected_game.current_riddle_index)
     except Exception:
         current_riddle = None
 
-    # If there is no current riddle -> game complete
     if current_riddle is None:
         return render_template(
             "complete.html.j2",
             completion_message=selected_game.get_completion_message(),
             image_name=selected_game.get_completion_image_name(),
             attempts=selected_game.get_total_attempt_count(),
+            user_name=get_user_name(),
         )
 
-    # No guess submitted -> render current riddle
     if not guess:
         return render_template(
             "user_game.html.j2",
@@ -214,16 +229,14 @@ def riddle():
             hint=current_riddle.get_hint(),
             advance=False,
             response=None,
+            user_name=get_user_name(),
         )
 
-    # Guess submitted -> evaluate
     try:
         if current_riddle.test_answer(guess):
-            # advance to next riddle and redirect to show next (or completion)
             selected_game.next_riddle()
             return redirect(url_for("riddle"))
         else:
-            # incorrect: show same riddle with a random incorrect response (if available)
             try:
                 response = current_riddle.get_random_incorrect_response()
             except Exception:
@@ -237,12 +250,12 @@ def riddle():
                 hint=current_riddle.get_hint(),
                 response=response,
                 advance=False,
+                user_name=get_user_name(),
             )
     except Exception:
         logging.exception("Error while evaluating guess")
         flash("Error processing your guess.", "error")
         return redirect(url_for("riddle"))
-
 
 @app.route("/restart")
 def reset():
