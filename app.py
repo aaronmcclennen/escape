@@ -206,7 +206,7 @@ def riddle():
     # No guess submitted -> render current riddle
     if not guess:
         return render_template(
-            "user_game.j2",
+            "user_game.html.j2",
             title=selected_game.name,
             riddle_id=selected_game.get_current_riddle_number(),
             riddle=current_riddle.get_riddle(),
@@ -229,7 +229,7 @@ def riddle():
             except Exception:
                 response = "Incorrect."
             return render_template(
-                "user_game.j2",
+                "user_game.html.j2",
                 title=selected_game.name,
                 riddle_id=selected_game.get_current_riddle_number(),
                 riddle=current_riddle.get_riddle(),
