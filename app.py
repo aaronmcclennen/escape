@@ -571,7 +571,80 @@ def admin_start_game():
     user_store["selected_game"] = selected_game
     return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
 
+@admin_bp.route("/begin", methods=["POST"])
+def admin_begin_game():
+    """
+    Start a staged game (transition to in_progress) and redirect admin to the
+    current-question page which will auto-update as riddles advance.
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
 
+    if not selected_game:
+        flash("No game selected.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    if selected_game.state != selected_game.STATE_STAGED:
+        flash(f"Cannot start — the game '{selected_game.name}' must be staged first.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    try:
+        selected_game.start()
+    except Exception:
+        logging.exception("Failed to start game %s", selected_game.name)
+        flash("Failed to start the selected game.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    # redirect to the admin page that shows the current question
+    return redirect(url_for("admin.admin_current_question"))
+
+
+@admin_bp.route("/current")
+def admin_current_question():
+    """
+    Render the admin view that displays the current riddle and polls for updates.
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+
+    if not selected_game:
+        flash("No game selected.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    return render_template("admin_current_question.html.j2", game=selected_game)
+
+
+@admin_bp.route("/current_status")
+def admin_current_status():
+    """
+    Return JSON describing the selected game's current riddle/state.
+    Polled by the admin_current_question page.
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+
+    if not selected_game:
+        return jsonify({"error": "no_selected_game"}), 400
+
+    # Get current riddle (returns None when game complete or out of bounds)
+    current = selected_game.get_riddle_at_index(selected_game.current_riddle_index)
+
+    if current is None:
+        return jsonify({
+            "game_over": True,
+            "state": selected_game.state,
+            "riddle_id": None,
+        })
+
+    return jsonify({
+        "game_over": False,
+        "state": selected_game.state,
+        "riddle_id": selected_game.get_current_riddle_number(),
+        "question": current.get_riddle(),
+        "hint": current.get_hint(),
+        "image_name": current.get_image_name(),
+        "attempts": current.get_attempts(),
+    })
 @admin_bp.route("/resume", methods=["POST"])
 def admin_resume_game():
     """Resume the active game previously started by this admin (stored in their user store)."""

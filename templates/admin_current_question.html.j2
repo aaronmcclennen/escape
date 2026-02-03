@@ -1,0 +1,57 @@
+<!-- File: `templates/admin_current_question.html.j2` (new admin page that auto-updates) -->
+<!doctype html>
+<html>
+<head>
+  <title>Admin — Current Question - {{ game.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <style>
+    .center { text-align:center; }
+    .riddle-box { max-width:800px; margin:20px auto; padding:16px; border:1px solid #ddd; background:#fff; }
+  </style>
+</head>
+<body>
+  <div class="riddle-box">
+    <h2>Game: {{ game.name }}</h2>
+    <p>State: <strong id="game_state">{{ game.state }}</strong></p>
+
+    <h3 id="riddle_heading">Riddle #<span id="riddle_id">-</span></h3>
+    <p id="riddle_text">Loading...</p>
+    <img id="riddle_img" src="" alt="" style="max-width:100%; display:none; margin-top:8px;">
+    <p id="riddle_hint" style="color:#666;"></p>
+    <p>Attempts: <span id="riddle_attempts">0</span></p>
+
+    <div class="center" style="margin-top:12px;">
+      <a href="{{ url_for('admin.admin_index') }}" class="button">Back to Admin</a>
+    </div>
+  </div>
+
+<script type="text/javascript">
+(function poll(){
+  $.getJSON("{{ url_for('admin.admin_current_status') }}")
+    .done(function(data){
+      if (!data) { setTimeout(poll, 2000); return; }
+      $("#game_state").text(data.state || "");
+      if (data.game_over) {
+        $("#riddle_heading").text("Game complete");
+        $("#riddle_text").text("All riddles answered.");
+        $("#riddle_img").hide();
+        $("#riddle_hint").text("");
+        $("#riddle_attempts").text("");
+        return;
+      }
+      $("#riddle_id").text(data.riddle_id || "-");
+      $("#riddle_text").text(data.question || "");
+      if (data.image_name) {
+        $("#riddle_img").attr("src", "{{ url_for('static', filename='') }}" + data.image_name).show();
+      } else {
+        $("#riddle_img").hide();
+      }
+      $("#riddle_hint").text(data.hint || "");
+      $("#riddle_attempts").text(data.attempts || 0);
+    })
+    .always(function(){ setTimeout(poll, 2000); });
+})();
+</script>
+</body>
+</html>
