@@ -188,10 +188,51 @@ def join_game():
         flash("Session error.", "error")
         return redirect(url_for("index"))
 
+    # store selected game in user store
     user_store["selected_game"] = selected_game
     flash(f"Joined game: {selected_game.name}", "info")
-    # on successful join, take user to the riddle (user game) page
+
+    # If the game is staged, send the user to a waiting page until it becomes in_progress.
+    if selected_game.state == selected_game.STATE_STAGED:
+        return redirect(url_for("wait"))
+
+    # If already in progress, go to riddle page
     return redirect(url_for("riddle"))
+
+
+@app.route("/wait")
+def wait():
+    """
+    Waiting page for users who joined a staged game.
+    The page polls `/wait_status` and will redirect to `/riddle` when the game becomes in_progress.
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+
+    if not selected_game:
+        flash("No game selected.", "error")
+        return redirect(url_for("index"))
+
+    # If the game already moved to in_progress, redirect immediately
+    if selected_game.state == selected_game.STATE_IN_PROGRESS:
+        return redirect(url_for("riddle"))
+
+    return render_template("wait.html.j2", game=selected_game, user_name=get_user_name())
+
+
+@app.route("/wait_status")
+def wait_status():
+    """
+    Return JSON with the current state of the user's selected game.
+    The wait page polls this endpoint to know when to redirect clients to /riddle.
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+
+    if not selected_game:
+        return jsonify({"error": "no_selected_game"}), 400
+
+    return jsonify({"state": selected_game.state})
 
 
 @app.route("/riddle", methods=["GET", "POST"])
