@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <title>Admin — Results for {{ game.name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="center">
+    <h2>Game Complete: {{ game.name }}</h2>
+    {% if duration_text %}
+      <p>Total time: <strong>{{ duration_text }}</strong></p>
+    {% else %}
+      <p>Total time: <strong>Unknown</strong></p>
+    {% endif %}
+
+    <h3>Scores</h3>
+    <ul>
+      {% for s in scores %}
+        <li>{{ s.display_name }} — {{ s.correct }} correct</li>
+      {% endfor %}
+    </ul>
+
+    <div style="margin-top:16px;">
+      <form action="{{ url_for('admin.admin_results_restart') }}" method="post" style="display:inline;">
+        <button type="submit">Restart Game (reset progress)</button>
+      </form>
+
+      <a href="{{ url_for('admin.admin_index') }}" style="margin-left:12px;">Return to Admin Menu</a>
+    </div>
+  </div>
+</body>
+</html>

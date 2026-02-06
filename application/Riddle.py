@@ -2,6 +2,7 @@ import logging
 import random
 import secrets
 import string
+from datetime import datetime, timezone
 
 
 class RiddleException(Exception):
@@ -94,14 +95,25 @@ class Game(object):
         # entry_code is only meaningful when state == in_progress
         self.entry_code = None
 
+        # new: timing and per-user scoring
+        self.start_time = None  # datetime when game moved to in_progress
+        self.end_time = None    # datetime when game finished
+        self.user_scores = {}   # map user_id -> correct_count
+
     def _generate_entry_code(self, length: int = 6) -> str:
         alphabet = string.ascii_letters + string.digits
         return "".join(secrets.choice(alphabet) for _ in range(length))
 
     def get_current_riddle(self):
         try:
-            return self.riddles[self.current_riddle_index]
-        except KeyError:
+            # if list-like
+            if isinstance(self.riddles, list):
+                return self.riddles[self.current_riddle_index]
+            # if dict-like, convert index to list order
+            else:
+                values = list(self.riddles.values())
+                return values[self.current_riddle_index]
+        except Exception:
             logging.info("There are no more riddles. Returning None to caller.")
             return None
 
@@ -109,19 +121,51 @@ class Game(object):
         return self.current_riddle_index + 1
 
     def next_riddle(self):
+        """
+        Advance to the next riddle. If advancing past the last riddle,
+        mark end_time to indicate game completion.
+        """
         self.current_riddle_index += 1
+        # if we've moved past the last riddle, mark end time
+        total = self.get_riddle_count()
+        if self.current_riddle_index >= total:
+            self.end_time = datetime.now(timezone.utc)
 
     def get_total_attempt_count(self):
         attempts = 0
-        for riddle_id, riddle in self.riddles.items():
-            attempts += riddle.get_attempts()
+        try:
+            if isinstance(self.riddles, dict):
+                iterable = self.riddles.values()
+            else:
+                iterable = self.riddles
+            for riddle in iterable:
+                try:
+                    attempts += riddle.get_attempts()
+                except Exception:
+                    pass
+        except Exception:
+            logging.exception("Failed while counting attempts")
         return attempts
 
     def get_completion_message(self):
-        return self.riddles[0].get_completion_message()
+        try:
+            if isinstance(self.riddles, list) and self.riddles:
+                return self.riddles[0].get_completion_message()
+            elif isinstance(self.riddles, dict) and self.riddles:
+                return list(self.riddles.values())[0].get_completion_message()
+        except Exception:
+            pass
+        return ""
 
     def get_completion_image_name(self):
-        return self.riddles[0].get_completion_image_name()
+        try:
+            if isinstance(self.riddles, list) and self.riddles:
+                return self.riddles[0].get_completion_image_name()
+            elif isinstance(self.riddles, dict) and self.riddles:
+                return list(self.riddles.values())[0].get_completion_image_name()
+        except Exception:
+            pass
+        return ""
 
     def get_riddle_count(self):
         return len(self.riddles)
@@ -147,6 +191,10 @@ class Game(object):
             self.entry_code = self._generate_entry_code()
         else:
             self.entry_code = None
+        # clear timing and per-user scores on reset
+        self.start_time = None
+        self.end_time = None
+        self.user_scores = {}
 
     def remove_riddle_by_index(self, index: int) -> None:
         """Remove riddle at given index from the game's riddle list."""
@@ -204,7 +252,12 @@ class Game(object):
         if self.state != self.STATE_STAGED:
             raise RiddleException(f"Cannot start game from state '{self.state}'; only '{self.STATE_STAGED}' may start.")
         self.state = self.STATE_IN_PROGRESS
+        # reset attempt counts and user scores
         self.reset_progress()
+        # set start time and fresh entry code
+        self.start_time = datetime.now(timezone.utc)
+        self.entry_code = self._generate_entry_code()
+        self.user_scores = {}
 
     def stop(self):
         """Stop an in-progress game and mark it ready; clear entry code."""
@@ -215,6 +268,10 @@ class Game(object):
         """Mark game ready for starting (no entry code)."""
         self.state = self.STATE_READY
         self.entry_code = None
+        # keep timing/scores cleared until actual start
+        self.start_time = None
+        self.end_time = None
+        self.user_scores = {}
 
     def mark_editing(self):
         """Mark game editable (no entry code)."""
@@ -231,6 +288,10 @@ class Game(object):
             raise RiddleException(f"Cannot stage game from state '{self.state}'; only '{self.STATE_READY}' may be staged.")
         self.state = self.STATE_STAGED
         self.entry_code = self._generate_entry_code()
+        # staged is not yet started: clear times so later start sets them
+        self.start_time = None
+        self.end_time = None
+        self.user_scores = {}
 
     def is_in_progress(self) -> bool:
         """

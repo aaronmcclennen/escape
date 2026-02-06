@@ -15,6 +15,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import check_password_hash, generate_password_hash
 from application.JsonLoader import ConfigLoader
 import secrets  # new import near the other imports
+from datetime import datetime, timezone, timedelta
 
 logging_format = (
     "%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s"
@@ -251,14 +252,9 @@ def riddle():
     except Exception:
         current_riddle = None
 
+    # if there is no current riddle -> game complete; send users to results page
     if current_riddle is None:
-        return render_template(
-            "complete.html.j2",
-            completion_message=selected_game.get_completion_message(),
-            image_name=selected_game.get_completion_image_name(),
-            attempts=selected_game.get_total_attempt_count(),
-            user_name=get_user_name(),
-        )
+        return redirect(url_for("results"))
 
     if not guess:
         return render_template(
@@ -275,6 +271,10 @@ def riddle():
 
     try:
         if current_riddle.test_answer(guess):
+            # increment per-user correct count
+            uid = session.get("user_id")
+            if uid:
+                selected_game.user_scores[uid] = selected_game.user_scores.get(uid, 0) + 1
             selected_game.next_riddle()
             return redirect(url_for("riddle"))
         else:
@@ -660,6 +660,121 @@ def admin_resume_game():
 
 # register admin blueprint
 app.register_blueprint(admin_bp)
+
+@app.route("/results")
+def results():
+    """
+    User-facing results page shown when a player reaches the end of the game.
+    Shows total duration and per-user correct counts (with display names).
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+
+    if not selected_game:
+        flash("No game selected.", "error")
+        return redirect(url_for("index"))
+
+    # compute duration if possible
+    start = selected_game.start_time
+    end = selected_game.end_time
+    duration_secs = None
+    if start and end:
+        duration_secs = int((end - start).total_seconds())
+
+    # build a list of (display_name, correct_count)
+    scores = []
+    for uid, count in selected_game.user_scores.items():
+        display = USER_DATA.get(uid, {}).get("display_name", uid)
+        scores.append({"user_id": uid, "display_name": display, "correct": count})
+
+    # ensure the current user is included even if they scored zero
+    cur_uid = session.get("user_id")
+    if cur_uid and cur_uid not in selected_game.user_scores:
+        display = USER_DATA.get(cur_uid, {}).get("display_name", cur_uid)
+        scores.append({"user_id": cur_uid, "display_name": display, "correct": 0})
+
+    # sort by correct desc
+    scores = sorted(scores, key=lambda s: (-s["correct"], s["display_name"]))
+
+    def _format_duration(secs):
+        if secs is None:
+            return None
+        m, s = divmod(secs, 60)
+        h, m = divmod(m, 60)
+        if h:
+            return f"{h:d}h {m:d}m {s:d}s"
+        if m:
+            return f"{m:d}m {s:d}s"
+        return f"{s:d}s"
+
+    return render_template("user_results.html.j2",
+                           game=selected_game,
+                           duration_seconds=duration_secs,
+                           duration_text=_format_duration(duration_secs),
+                           scores=scores,
+                           user_name=get_user_name())
+
+# Admin results page
+@admin_bp.route("/results")
+def admin_results():
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+
+    if not selected_game:
+        flash("No game selected.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    start = selected_game.start_time
+    end = selected_game.end_time
+    duration_secs = None
+    if start and end:
+        duration_secs = int((end - start).total_seconds())
+
+    scores = []
+    for uid, count in selected_game.user_scores.items():
+        display = USER_DATA.get(uid, {}).get("display_name", uid)
+        scores.append({"user_id": uid, "display_name": display, "correct": count})
+    scores = sorted(scores, key=lambda s: (-s["correct"], s["display_name"]))
+
+    def _format_duration(secs):
+        if secs is None:
+            return None
+        m, s = divmod(secs, 60)
+        h, m = divmod(m, 60)
+        if h:
+            return f"{h:d}h {m:d}m {s:d}s"
+        if m:
+            return f"{m:d}m {s:d}s"
+        return f"{s:d}s"
+
+    return render_template("admin_results.html.j2",
+                           game=selected_game,
+                           duration_seconds=duration_secs,
+                           duration_text=_format_duration(duration_secs),
+                           scores=scores,
+                           user_name=get_user_name())
+
+@admin_bp.route("/results/restart", methods=["POST"])
+def admin_results_restart():
+    """
+    Restart the selected game: reset progress and mark READY so it can be staged again.
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+    if not selected_game:
+        flash("No game selected.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    try:
+        selected_game.reset_progress()
+        selected_game.mark_ready()
+    except Exception:
+        logging.exception("Failed to restart selected game")
+        flash("Failed to restart the game.", "error")
+        return redirect(url_for("admin.admin_results"))
+
+    flash("Game restarted.", "info")
+    return redirect(url_for("admin.admin_index"))
 
 if __name__ == "__main__":
     logging.info("Starting vermuten...")
