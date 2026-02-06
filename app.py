@@ -660,7 +660,7 @@ def admin_resume_game():
 
 # register admin blueprint
 app.register_blueprint(admin_bp)
-
+# python
 @app.route("/results")
 def results():
     """
@@ -674,12 +674,13 @@ def results():
         flash("No game selected.", "error")
         return redirect(url_for("index"))
 
-    # compute duration if possible
+    # compute duration: use end_time if present, otherwise compute up to now
     start = selected_game.start_time
     end = selected_game.end_time
     duration_secs = None
-    if start and end:
-        duration_secs = int((end - start).total_seconds())
+    if start:
+        effective_end = end or datetime.now(timezone.utc)
+        duration_secs = int((effective_end - start).total_seconds())
 
     # build a list of (display_name, correct_count)
     scores = []
@@ -714,7 +715,8 @@ def results():
                            scores=scores,
                            user_name=get_user_name())
 
-# Admin results page
+
+# python
 @admin_bp.route("/results")
 def admin_results():
     user_store = get_user_store()
@@ -724,11 +726,13 @@ def admin_results():
         flash("No game selected.", "error")
         return redirect(url_for("admin.admin_index"))
 
+    # compute duration: use end_time if present, otherwise compute up to now
     start = selected_game.start_time
     end = selected_game.end_time
     duration_secs = None
-    if start and end:
-        duration_secs = int((end - start).total_seconds())
+    if start:
+        effective_end = end or datetime.now(timezone.utc)
+        duration_secs = int((effective_end - start).total_seconds())
 
     scores = []
     for uid, count in selected_game.user_scores.items():
