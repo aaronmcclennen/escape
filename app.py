@@ -603,6 +603,7 @@ def admin_begin_game():
 def admin_current_question():
     """
     Render the admin view that displays the current riddle and polls for updates.
+    If the game is already complete, redirect to the admin results page.
     """
     user_store = get_user_store()
     selected_game = user_store.get("selected_game") if user_store else None
@@ -610,6 +611,15 @@ def admin_current_question():
     if not selected_game:
         flash("No game selected.", "error")
         return redirect(url_for("admin.admin_index"))
+
+    # If the game is already complete (no current riddle), redirect to results immediately
+    try:
+        current = selected_game.get_riddle_at_index(selected_game.current_riddle_index)
+    except Exception:
+        current = None
+
+    if current is None:
+        return redirect(url_for("admin.admin_results"))
 
     # pass entry_code so initial render shows it immediately
     return render_template("admin_current_question.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())

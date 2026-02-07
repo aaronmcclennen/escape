@@ -40,11 +40,8 @@
         $("#entry_code").text(data.entry_code || "");
       }
       if (data.game_over) {
-        $("#riddle_heading").text("Game complete");
-        $("#riddle_text").text("All riddles answered.");
-        $("#riddle_img").hide();
-        $("#riddle_hint").text("");
-        $("#riddle_attempts").text("");
+        // redirect to the admin results page so admin sees final results
+        window.location = "{{ url_for('admin.admin_results') }}";
         return;
       }
       $("#riddle_id").text(data.riddle_id || "-");
