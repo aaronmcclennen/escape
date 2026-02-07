@@ -671,8 +671,7 @@ def admin_resume_game():
         return redirect(url_for("admin.admin_index"))
     return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
 
-# register admin blueprint
-app.register_blueprint(admin_bp)
+
 # python
 @app.route("/results")
 def results():
@@ -792,6 +791,9 @@ def admin_results_restart():
 
     flash("Game restarted.", "info")
     return redirect(url_for("admin.admin_index"))
+
+# register admin blueprint
+app.register_blueprint(admin_bp)
 
 if __name__ == "__main__":
     logging.info("Starting vermuten...")
