@@ -611,7 +611,8 @@ def admin_current_question():
         flash("No game selected.", "error")
         return redirect(url_for("admin.admin_index"))
 
-    return render_template("admin_current_question.html.j2", game=selected_game)
+    # pass entry_code so initial render shows it immediately
+    return render_template("admin_current_question.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
 
 
 @admin_bp.route("/current_status")
@@ -634,6 +635,7 @@ def admin_current_status():
             "game_over": True,
             "state": selected_game.state,
             "riddle_id": None,
+            "entry_code": selected_game.get_entry_code(),
         })
 
     return jsonify({
@@ -644,6 +646,7 @@ def admin_current_status():
         "hint": current.get_hint(),
         "image_name": current.get_image_name(),
         "attempts": current.get_attempts(),
+        "entry_code": selected_game.get_entry_code(),
     })
 @admin_bp.route("/resume", methods=["POST"])
 def admin_resume_game():

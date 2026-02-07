@@ -15,6 +15,9 @@
     <h2>Game: {{ game.name }}</h2>
     <p>State: <strong id="game_state">{{ game.state }}</strong></p>
 
+    <!-- show entry code for admin -->
+    <p>Entry code: <strong id="entry_code">{{ entry_code or game.get_entry_code() or "" }}</strong></p>
+
     <h3 id="riddle_heading">Riddle #<span id="riddle_id">-</span></h3>
     <p id="riddle_text">Loading...</p>
     <img id="riddle_img" src="" alt="" style="max-width:100%; display:none; margin-top:8px;">
@@ -32,6 +35,10 @@
     .done(function(data){
       if (!data) { setTimeout(poll, 2000); return; }
       $("#game_state").text(data.state || "");
+      // update entry code if present
+      if (typeof data.entry_code !== "undefined") {
+        $("#entry_code").text(data.entry_code || "");
+      }
       if (data.game_over) {
         $("#riddle_heading").text("Game complete");
         $("#riddle_text").text("All riddles answered.");
