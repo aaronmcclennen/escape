@@ -539,7 +539,7 @@ def admin_login():
                 return redirect(next_url)
             return redirect(url_for("admin.admin_index"))
         # failed login: re-render with an error flag (or you can flash)
-        return redirect(url_for("dmin_login", next=next_url, error=1))
+        return redirect(url_for("admin_login", next=next_url, error=1))
 
     return render_template("admin_login.html.j2")
 
