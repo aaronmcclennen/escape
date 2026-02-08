@@ -55,13 +55,22 @@ class Riddle(object):
     def test_answer(self, response):
         logging.debug(f"Testing {response} against {self.answer}.")
         self.attempts += 1
-        response = response.lower()
-        if response in self.answer:
-            logging.debug("Returning True.")
-            return True
-        else:
-            logging.debug("Returning False.")
+
+        if response is None:
+            logging.debug("Returning False (no response).")
             return False
+
+        resp_norm = str(response).strip().casefold()
+
+        for a in self.answer:
+            try:
+                if resp_norm == str(a).strip().casefold():
+                    logging.debug("Returning True.")
+                    return True
+            except Exception:
+                continue
+        logging.debug("Returning False.")
+        return False
 
     def get_random_incorrect_response(self):
         return random.choice(self.incorrect_responses)
