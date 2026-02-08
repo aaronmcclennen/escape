@@ -278,6 +278,7 @@ def riddle():
             selected_game.next_riddle()
             return redirect(url_for("riddle"))
         else:
+            logging.info("Bad guess. Wanted %s got %s", current_riddle.answer, guess)
             try:
                 response = current_riddle.get_random_incorrect_response()
             except Exception:
