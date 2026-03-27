@@ -1,5 +1,5 @@
 import unittest
-from application.Riddle import Riddle, RiddleManager
+from application.Riddle import Riddle, Game, Games
 from application.JsonLoader import ConfigLoader
 
 
@@ -62,65 +62,68 @@ class RiddleTests(unittest.TestCase):
         self.assertEqual(self.riddle.get_completion_message(), self.COMPLETION_MESSAGE)
 
 
-class RiddleManagerTests(unittest.TestCase):
+class GamesTests(unittest.TestCase):
 
     RIDDLE = "riddle"
     ANSWER = ["answer"]
-    CORRECT_ANSWER = "answer"
-    INCORRECT_ANSWER = "not answer"
     HINT = "HINT"
     IMAGE_NAME = "image_name.jpg"
-    CORRECT_RESPONSES = ["yes"]
-    INCORRECT_RESPONSES = ["no"]
-    COMPLETION_MESSAGE = "done"
-    COMPLETION_IMAGE_NAME = "all_done.png"
 
     def setUp(self):
+        # single riddle used inside games
         self.riddle = Riddle(
             self.RIDDLE,
             self.ANSWER,
             self.HINT,
             self.IMAGE_NAME,
-            self.CORRECT_RESPONSES,
-            self.INCORRECT_RESPONSES,
-            self.COMPLETION_MESSAGE,
-            self.COMPLETION_IMAGE_NAME,
+            ["yes"],
+            ["no"],
+            "done",
+            "all_done.png",
         )
-        self.riddle_collection = {0: self.riddle}
-        self.riddle_manager = RiddleManager(self.riddle_collection)
+        # create Game instances with names that will sort differently
+        self.game_alpha = Game("Alpha", [self.riddle])
+        self.game_beta = Game("beta", [self.riddle])
 
-    def test_get_current_riddle(self):
-        self.assertEqual(self.riddle_manager.get_current_riddle(), self.riddle)
+    def test_get_all_sorted(self):
+        g = Games([self.game_beta, self.game_alpha])
+        all_games = g.get_all()
+        # names should be sorted case-insensitively -> Alpha then beta
+        self.assertEqual(all_games[0].name, "Alpha")
+        self.assertEqual(all_games[1].name, "beta")
 
-    def test_no_more_riddles(self):
-        self.riddle_manager.next_riddle()
-        self.assertEqual(self.riddle_manager.get_current_riddle(), None)
+    def test_add_keeps_sorted(self):
+        g = Games()
+        g.add(self.game_beta)
+        g.add(self.game_alpha)
+        names = [gg.name for gg in g.get_all()]
+        self.assertEqual(names, ["Alpha", "beta"])
 
-    def test_reset_progress(self):
-        self.riddle_manager.next_riddle()
-        self.assertEqual(self.riddle_manager.get_current_riddle_number(), 2)
-        self.riddle_manager.reset_progress()
-        self.assertEqual(self.riddle_manager.get_current_riddle_number(), 1)
+    def test_remove_by_object_and_name(self):
+        g = Games([self.game_alpha, self.game_beta])
+        # remove by object
+        removed = g.remove(self.game_alpha)
+        self.assertTrue(removed)
+        self.assertEqual(len(g), 1)
+        # remove by name (case-insensitive)
+        removed_name = g.remove("BETA")
+        self.assertTrue(removed_name)
+        self.assertEqual(len(g), 0)
 
-    def test_get_total_attempt_count(self):
-        riddle = self.riddle_manager.get_current_riddle()
-        self.assertEqual(self.riddle_manager.get_total_attempt_count(), 0)
-        riddle.test_answer(self.CORRECT_ANSWER)
-        riddle.test_answer(self.INCORRECT_ANSWER)
-        self.assertEqual(self.riddle_manager.get_total_attempt_count(), 2)
+    def test_find_and_len_and_iter(self):
+        g = Games([self.game_beta, self.game_alpha])
+        found = g.find("ALPHA")
+        self.assertIsNotNone(found)
+        self.assertEqual(found.name, "Alpha")
+        # __len__ and iteration
+        self.assertEqual(len(g), 2)
+        iter_names = [gg.name for gg in g]
+        self.assertEqual(iter_names, ["Alpha", "beta"])
 
-    def test_get_completion_message(self):
-        self.assertEqual(
-            self.riddle_manager.get_completion_message(), self.COMPLETION_MESSAGE
-        )
-
-    def test_get_completion_image_name(self):
-        self.assertEqual(
-            self.riddle_manager.get_completion_image_name(), self.COMPLETION_IMAGE_NAME
-        )
-
-    def test_get_riddle_count(self):
-        self.assertEqual(self.riddle_manager.get_riddle_count(), 1)
+    def test_clear(self):
+        g = Games([self.game_alpha, self.game_beta])
+        g.clear()
+        self.assertEqual(len(g), 0)
 
 
 class JsonLoaderTests(unittest.TestCase):
@@ -133,9 +136,11 @@ class JsonLoaderTests(unittest.TestCase):
     def test_config_load(self):
         self.assertIsNotNone(self.json_config_loader)
 
-    def test_get_riddle_manager(self):
-        riddle_manager = self.json_config_loader.get_riddle_manager()
-        self.assertEqual(type(riddle_manager), RiddleManager)
+    def test_get_game(self):
+        # ConfigLoader creates a Game instance and exposes it as `.game`
+        game = getattr(self.json_config_loader, "game", None)
+        self.assertIsNotNone(game)
+        self.assertEqual(type(game), Game)
 
     def test_get_config_file_name(self):
         self.assertEqual(
