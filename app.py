@@ -670,6 +670,8 @@ def admin_resume_game():
     if selected_game.state not in (selected_game.STATE_STAGED, selected_game.STATE_IN_PROGRESS):
         flash(f"Cannot resume — the game '{selected_game.name}' is not active.", "error")
         return redirect(url_for("admin.admin_index"))
+    if selected_game.state == selected_game.STATE_IN_PROGRESS:
+        return redirect(url_for("admin.admin_current_question"))
     return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
 
 
