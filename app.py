@@ -488,6 +488,7 @@ def admin_download_questions():
 @admin_bp.route("/")
 def admin_index():
     selected_game = get_selected_game()
+    logging.info("Selected game: %s", selected_game)
     if selected_game is not None:
         try:
             # Do not force a READY state if the game is STAGED or IN_PROGRESS
@@ -497,7 +498,7 @@ def admin_index():
             logging.exception("admin_index: failed to update selected game state")
     # provide a shallow copy of the sorted games list for the template to iterate
     # also pass the user's currently selected game so the template can show "Resume Game"
-    return render_template("admin_index.html.j2", games=games.get_all(), user_selected=selected_game)
+    return render_stemplate("admin_index.html.j2", games=games.get_all(), user_selected=selected_game)
 
 
 @admin_bp.route("/upload", methods=["POST"])
