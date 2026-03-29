@@ -51,18 +51,21 @@
             <button type="submit" class="button">Manage Questions</button>
             <button type="submit" class="button" formaction="{{ url_for('admin.admin_download_questions') }}" formmethod="get">Download JSON</button>
 
-            {# If this admin has an active staged/in_progress game, show Resume button.
-               Otherwise show Start Game (acts on selected game in the dropdown). #}
-            {% if user_selected and user_selected.state in (user_selected.STATE_STAGED, user_selected.STATE_IN_PROGRESS) %}
-              <form action="{{ url_for('admin.admin_resume_game') }}" method="post" style="display:inline;margin-left:8px;">
-                <button type="submit" class="button">Resume Game</button>
-              </form>
-            {% else %}
+            {# Start Game lives inside the outer form so it can read game_id from the dropdown #}
+            {% if not (user_selected and user_selected.state in (user_selected.STATE_STAGED, user_selected.STATE_IN_PROGRESS)) %}
               <button type="submit" class="button" formaction="{{ url_for('admin.admin_start_game') }}" formmethod="post" style="margin-left:8px;">Start Game</button>
             {% endif %}
 
           </div>
         </form>
+
+        {# Resume Game must be its own top-level form (NOT nested) so the browser posts to the correct action #}
+        {% if user_selected and user_selected.state in (user_selected.STATE_STAGED, user_selected.STATE_IN_PROGRESS) %}
+          <form action="{{ url_for('admin.admin_resume_game') }}" method="post" style="margin-top:8px;">
+            <button type="submit" class="button">Resume Game</button>
+          </form>
+        {% endif %}
+
 
       {% else %}
         <p>No games found in the configured games directory.</p>
