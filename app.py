@@ -47,6 +47,11 @@ def get_selected_game():
     user_store = get_user_store()
     return user_store.get("selected_game", None)
 
+def get_active_game():
+    """Return the in-progress/staged game for the current admin, separate from the editing selection."""
+    user_store = get_user_store()
+    return user_store.get("active_game", None) if user_store else None
+
 def select_game_from_form():
     """
     Read game_id from the request (GET or POST) and return (selected_game, game_id).
@@ -497,8 +502,10 @@ def admin_index():
         except Exception:
             logging.exception("admin_index: failed to update selected game state")
     # provide a shallow copy of the sorted games list for the template to iterate
-    # also pass the user's currently selected game so the template can show "Resume Game"
-    return render_template("admin_index.html.j2", games=games.get_all(), user_selected=selected_game)
+    # pass active_game separately so the Resume button is independent of the editing selection
+    user_store = get_user_store()
+    active_game = user_store.get("active_game") if user_store else None
+    return render_template("admin_index.html.j2", games=games.get_all(), user_selected=selected_game, user_active=active_game)
 
 
 @admin_bp.route("/upload", methods=["POST"])
@@ -571,6 +578,7 @@ def admin_start_game():
 
     # put staged game into this admin's user store and show active page
     user_store["selected_game"] = selected_game
+    user_store["active_game"] = selected_game
     return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
 
 @admin_bp.route("/begin", methods=["POST"])
@@ -580,7 +588,7 @@ def admin_begin_game():
     current-question page which will auto-update as riddles advance.
     """
     user_store = get_user_store()
-    selected_game = user_store.get("selected_game") if user_store else None
+    selected_game = user_store.get("active_game") if user_store else None
 
     if not selected_game:
         flash("No game selected.", "error")
@@ -608,7 +616,7 @@ def admin_current_question():
     If the game is already complete, redirect to the admin results page.
     """
     user_store = get_user_store()
-    selected_game = user_store.get("selected_game") if user_store else None
+    selected_game = user_store.get("active_game") if user_store else None
 
     if not selected_game:
         flash("No game selected.", "error")
@@ -634,7 +642,7 @@ def admin_current_status():
     Polled by the admin_current_question page.
     """
     user_store = get_user_store()
-    selected_game = user_store.get("selected_game") if user_store else None
+    selected_game = user_store.get("active_game") if user_store else None
 
     if not selected_game:
         return jsonify({"error": "no_selected_game"}), 400
@@ -664,7 +672,7 @@ def admin_current_status():
 def admin_resume_game():
     """Resume the active game previously started by this admin (stored in their user store)."""
     user_store = get_user_store()
-    selected_game = user_store.get("selected_game")
+    selected_game = user_store.get("active_game")
     if not selected_game:
         flash("No active game to resume.", "error")
         return redirect(url_for("admin.admin_index"))
@@ -736,7 +744,7 @@ def results():
 @admin_bp.route("/results")
 def admin_results():
     user_store = get_user_store()
-    selected_game = user_store.get("selected_game") if user_store else None
+    selected_game = user_store.get("active_game") if user_store else None
 
     if not selected_game:
         flash("No game selected.", "error")
@@ -780,7 +788,7 @@ def admin_results_restart():
     Restart the selected game: reset progress and mark READY so it can be staged again.
     """
     user_store = get_user_store()
-    selected_game = user_store.get("selected_game") if user_store else None
+    selected_game = user_store.get("active_game") if user_store else None
     if not selected_game:
         flash("No game selected.", "error")
         return redirect(url_for("admin.admin_index"))
@@ -793,6 +801,7 @@ def admin_results_restart():
         flash("Failed to restart the game.", "error")
         return redirect(url_for("admin.admin_results"))
 
+    user_store["active_game"] = None
     flash("Game restarted.", "info")
     return redirect(url_for("admin.admin_index"))
 
