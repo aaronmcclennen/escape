@@ -26,6 +26,10 @@
 
     <div class="center" style="margin-top:12px;">
       <a href="{{ url_for('admin.admin_index') }}" class="button">Back to Admin</a>
+      <form action="{{ url_for('admin.admin_cancel_game') }}" method="post" style="display:inline; margin-left:8px;"
+            onsubmit="return confirm('Are you sure you want to cancel this game? All progress will be lost.');">
+        <button type="submit" class="button" style="background:#ff4d4d; color:#fff;">Cancel Game</button>
+      </form>
     </div>
   </div>
 

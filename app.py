@@ -668,6 +668,33 @@ def admin_current_status():
         "attempts": current.get_attempts(),
         "entry_code": selected_game.get_entry_code(),
     })
+@admin_bp.route("/cancel", methods=["POST"])
+def admin_cancel_game():
+    """Cancel the active game: reset progress, mark READY, and return to admin index."""
+    user_store = get_user_store()
+    selected_game = user_store.get("active_game") if user_store else None
+
+    if not selected_game:
+        flash("No active game to cancel.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    if selected_game.state not in (selected_game.STATE_STAGED, selected_game.STATE_IN_PROGRESS):
+        flash(f"Cannot cancel — the game '{selected_game.name}' is not active.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    try:
+        selected_game.reset_progress()
+        selected_game.mark_ready()
+    except Exception:
+        logging.exception("Failed to cancel game %s", selected_game.name)
+        flash("Failed to cancel the game.", "error")
+        return redirect(url_for("admin.admin_current_question"))
+
+    user_store["active_game"] = None
+    flash("Game cancelled.", "info")
+    return redirect(url_for("admin.admin_index"))
+
+
 @admin_bp.route("/resume", methods=["POST"])
 def admin_resume_game():
     """Resume the active game previously started by this admin (stored in their user store)."""
