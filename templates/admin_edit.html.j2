@@ -1,27 +1,41 @@
 <!doctype html>
 <html>
 <head>
-    <title>Admin — Edit Question</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Admin — {% if action == 'create' %}Create{% else %}Edit{% endif %} Question</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<h1>Admin — {% if action == 'create' %}Create{% else %}Edit{% endif %} Question</h1>
+<h1>Admin — {% if action == 'create' %}Create{% else %}Edit ({{ riddle.id + 1 }} of {{ total_count }}){% endif %} Question</h1>
+
+{# Flash messages #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div style="max-width:720px;margin:12px auto 16px;">
+      {% for category, msg in messages %}
+        <div style="padding:10px;margin-bottom:8px;border-radius:4px;text-align:center;
+                    {% if category == 'error' %}background:#ffd6d6;border:1px solid #ff9b9b;{% else %}background:#e6ffea;border:1px solid #9be59b;{% endif %}">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
 
 {% if action == 'create' %}
-<form action="/admin/questions/create" method="post">
+<form action="{{ url_for('admin.admin_create_question') }}" method="post">
 {% else %}
-<form action="/admin/questions/update/{{ riddle.id }}" method="post">
+<form action="{{ url_for('admin.admin_update_question', index=riddle.id) }}" method="post">
 {% endif %}
-  <label>Question</label><br>
-  <input class="admin-input" type="text" name="question" value="{{ riddle.question if riddle else '' }}"><br>
-  <label>Answer(s) (comma separated)</label><br>
-  <input class="admin-input" type="text" name="answer" value="{{ riddle.answer if riddle else '' }}"><br>
-  <label>Hint</label><br>
-  <input class="admin-input" type="text" name="hint" value="{{ riddle.hint if riddle else '' }}"><br>
-  <label>Image name (static/)</label><br>
-  <input class="admin-input" type="text" name="image_name" value="{{ riddle.image_name if riddle else '' }}"><br><br>
+  <label>Question <span style="color:#c00">*</span></label><br>
+  <textarea class="admin-textarea" name="question" required placeholder="Enter the question text">{{ riddle.question if riddle else '' }}</textarea><br>
+  <label>Answer(s) <span style="color:#c00">*</span> <small style="color:#888">(comma separated for multiple accepted answers)</small></label><br>
+  <input class="admin-input" type="text" name="answer" required placeholder="e.g. Paris, paris" value="{{ riddle.answer if riddle else '' }}"><br>
+  <label>Hint <small style="color:#888">(optional — shown to players who are stuck)</small></label><br>
+  <input class="admin-input" type="text" name="hint" placeholder="A helpful clue…" value="{{ riddle.hint if riddle else '' }}"><br>
+  <label>Image name <small style="color:#888">(optional — filename in static/)</small></label><br>
+  <input class="admin-input" type="text" name="image_name" placeholder="e.g. trophy.jpg" value="{{ riddle.image_name if riddle else '' }}"><br><br>
   <input type="submit" value="{% if action == 'create' %}Create{% else %}Update{% endif %}">
-  <a href="/admin/questions" class="button">Cancel</a>
+  <a href="{{ url_for('admin.admin_questions') }}" class="button">Cancel</a>
 </form>
 
 </body>

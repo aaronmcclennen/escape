@@ -59,6 +59,10 @@
               <button type="submit" class="button" formaction="{{ url_for('admin.admin_start_game') }}" formmethod="post" style="margin-left:8px;">Start Game</button>
             {% endif %}
 
+            {# Delete Game #}
+            <button type="submit" class="button" formaction="{{ url_for('admin.admin_delete_game') }}" formmethod="post"
+                    style="background-color:#c0392b;margin-left:8px;"
+                    onclick="return confirm('Delete the selected game? This cannot be undone.')">Delete Game</button>
           </div>
         </form>
 
@@ -93,7 +97,8 @@
         <h3>Create New Game</h3>
         <form id="create-game-form" action="{{ url_for('admin.admin_questions') }}" method="post">
           <input type="hidden" name="create_new" value="1">
-          <input type="text" name="new_game_name" placeholder="New game name (optional)" style="width:100%;padding:8px;margin-bottom:8px;">
+          <label for="new-game-name">Game name <span style="color:#c00">*</span></label>
+          <input id="new-game-name" type="text" name="new_game_name" required placeholder="Enter a unique game name" style="width:100%;padding:8px;margin-bottom:8px;">
           <div>
             <button type="submit" class="button">Create New Game</button>
           </div>

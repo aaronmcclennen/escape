@@ -3,14 +3,28 @@
 <head>
     <title>Admin — Questions</title>
 </head>
-<link rel="stylesheet" href="./static/style.css">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <h1>Admin — Questions</h1>
+
+{# Flash messages #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div style="max-width:720px;margin:12px auto 16px;">
+      {% for category, msg in messages %}
+        <div style="padding:10px;margin-bottom:8px;border-radius:4px;text-align:center;
+                    {% if category == 'error' %}background:#ffd6d6;border:1px solid #ff9b9b;{% else %}background:#e6ffea;border:1px solid #9be59b;{% endif %}">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
 
 <div style="text-align:center">
   <a href="{{ url_for('admin.admin_index') }}" class="button">Admin Menu</a>
-  <a href="/admin/questions/new" class="button">Create new question</a>
+  <a href="{{ url_for('admin.admin_new_question') }}" class="button">Create new question</a>
   <a href="/admin/progress" class="button">Progress</a>
-  <a href="/admin/questions/download" class="button" download="riddles.json">Download JSON</a>
+  <a href="{{ url_for('admin.admin_download_questions') }}" class="button" download="riddles.json">Download JSON</a>
 </div>
 
       <!-- Post back to the same page; name will be saved into the game object in-memory -->
@@ -21,6 +35,15 @@
           <button type="submit" class="button">Save Game Name</button>
         </div>
       </form>
+
+<p style="text-align:center;margin-top:16px;"><strong>{{ total_count }}</strong> question{{ "s" if total_count != 1 else "" }} in this game</p>
+
+{% if total_count == 0 %}
+  <p style="text-align:center;color:#888;margin-top:24px;">
+    No questions yet — click <strong>Create new question</strong> above to get started.
+  </p>
+{% endif %}
+
 <ul>
     {% for r in game.riddles %}
       {% set idx = loop.index0 %}
@@ -32,20 +55,20 @@
 
         {# Move controls: hide Up for first, Down for last #}
         {% if idx > 0 %}
-          <form action="/admin/questions/move/{{ idx }}/up" method="post" style="display:inline">
+          <form action="{{ url_for('admin.admin_move_question', index=idx, direction='up') }}" method="post" style="display:inline">
             <button type="submit">Move Up</button>
           </form>
         {% endif %}
         {% if idx < total_count - 1 %}
-          <form action="/admin/questions/move/{{ idx }}/down" method="post" style="display:inline">
+          <form action="{{ url_for('admin.admin_move_question', index=idx, direction='down') }}" method="post" style="display:inline">
             <button type="submit">Move Down</button>
           </form>
         {% endif %}
 
-        <form action="/admin/questions/edit/{{ idx }}" method="get" style="display:inline">
+        <form action="{{ url_for('admin.admin_edit_question', index=idx) }}" method="get" style="display:inline">
           <button type="submit">Edit</button>
         </form>
-        <form action="/admin/questions/delete/{{ idx }}" method="post" style="display:inline" onsubmit="return confirm('Delete question?')">
+        <form action="{{ url_for('admin.admin_delete_question', index=idx) }}" method="post" style="display:inline" onsubmit="return confirm('Delete question?')">
           <button type="submit">Delete</button>
         </form>
       </li>

@@ -324,7 +324,14 @@ def admin_questions():
 
     # If admin requested creation of a new empty game via POST, create and select it.
     if request.method == "POST" and request.form.get("create_new"):
-        new_name = (request.form.get("new_game_name") or "New Game").strip()
+        new_name = (request.form.get("new_game_name") or "").strip()
+        if not new_name:
+            flash("Game name is required.", "error")
+            return redirect(url_for("admin.admin_index"))
+        # prevent duplicate names
+        if games.find(new_name):
+            flash(f"A game named '{new_name}' already exists. Please choose a different name.", "error")
+            return redirect(url_for("admin.admin_index"))
         new_game = Game(new_name, [])
         games.add(new_game)
         # store and mark editing for this admin
@@ -333,6 +340,7 @@ def admin_questions():
             new_game.mark_editing()
         except Exception:
             logging.exception("Failed to mark new game editing")
+        flash(f"Game '{new_name}' created.", "info")
         # redirect to questions page for the new game
         return redirect(url_for("admin.admin_questions", game_id=new_game.name))
 
@@ -370,18 +378,29 @@ def admin_questions():
 
 @admin_bp.route("/questions/new")
 def admin_new_question():
-    return render_template("admin_edit.html.j2", action="create", riddle=None)
+    total_count = get_selected_game().get_riddle_count() if get_selected_game() else 0
+    return render_template("admin_edit.html.j2", action="create", riddle=None, total_count=total_count)
 
 
 @admin_bp.route("/questions/create", methods=["POST"])
 def admin_create_question():
+    question_text = (request.form.get("question") or "").strip()
+    answer_raw = (request.form.get("answer") or "").strip()
+    answers = [s.strip() for s in answer_raw.split(",") if s.strip()]
+
+    # server-side validation
+    if not question_text:
+        flash("Question text is required.", "error")
+        return redirect(url_for("admin.admin_new_question"))
+    if not answers:
+        flash("At least one answer is required.", "error")
+        return redirect(url_for("admin.admin_new_question"))
+
     payload = {
-        "question": request.form.get("question", ""),
-        "answer": [
-            s.strip() for s in request.form.get("answer", "").split(",") if s.strip()
-        ],
-        "hint": request.form.get("hint", ""),
-        "image_name": request.form.get("image_name", ""),
+        "question": question_text,
+        "answer": answers,
+        "hint": request.form.get("hint", "").strip(),
+        "image_name": request.form.get("image_name", "").strip(),
     }
     new_riddle = Riddle(
         payload["question"],
@@ -395,6 +414,7 @@ def admin_create_question():
     )
 
     get_selected_game().add_riddle_at_end(new_riddle)
+    flash("Question added.", "info")
     return redirect(url_for("admin.admin_questions"))
 
 
@@ -487,6 +507,32 @@ def admin_download_questions():
     except Exception:
         logging.exception("Failed to prepare download")
         return redirect(url_for("admin.admin_questions"))
+
+
+@admin_bp.route("/games/delete", methods=["POST"])
+def admin_delete_game():
+    """Delete a game from the games list (only if it is not active/in-progress)."""
+    game_id = request.form.get("game_id")
+    if not game_id:
+        flash("No game specified.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    target = games.find(game_id)
+    if not target:
+        flash(f"Game '{game_id}' not found.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    if target.is_in_progress():
+        flash(f"Cannot delete '{target.name}' — it is currently active.", "error")
+        return redirect(url_for("admin.admin_index"))
+
+    games.remove(target)
+    # clear user selection if it was pointing at the deleted game
+    user_store = get_user_store()
+    if user_store and user_store.get("selected_game") is target:
+        user_store["selected_game"] = None
+    flash(f"Game '{target.name}' deleted.", "info")
+    return redirect(url_for("admin.admin_index"))
 
 
 @admin_bp.route("/")
