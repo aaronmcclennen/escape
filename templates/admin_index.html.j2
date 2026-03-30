@@ -15,6 +15,9 @@
     .row { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; flex-wrap: wrap; }
     .upload, .create { flex: 1 1 320px; }
     .flash { max-width:720px; margin:12px auto 16px; padding:8px; }
+    .resume-banner { padding: 12px; margin-top: 12px; background: #e6f7ff; border: 1px solid #b3e0ff; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; }
+    .resume-label { font-weight: 600; }
+    .resume-button { margin-left: 8px; }
   </style>
 </head>
 <body>
@@ -59,11 +62,14 @@
           </div>
         </form>
 
-        {# Resume Game must be its own top-level form (NOT nested) so the browser posts to the correct action #}
+        {# Resume Game must be its own top-level form (NOT nested inside game-select-form) #}
         {% if user_active and user_active.state in (user_active.STATE_STAGED, user_active.STATE_IN_PROGRESS) %}
-          <form action="{{ url_for('admin.admin_resume_game') }}" method="post" style="margin-top:8px;">
-            <button type="submit" class="button">Resume Game</button>
-          </form>
+          <div class="resume-banner">
+            <span class="resume-label">▶ <strong>{{ user_active.name }}</strong> is {{ user_active.state | replace('_', ' ') }}</span>
+            <form action="{{ url_for('admin.admin_resume_game') }}" method="post" style="display:inline;">
+              <button type="submit" class="button resume-button">Resume Game</button>
+            </form>
+          </div>
         {% endif %}
 
 
