@@ -61,6 +61,38 @@ class RiddleTests(unittest.TestCase):
     def test_get_completion_message(self):
         self.assertEqual(self.riddle.get_completion_message(), self.COMPLETION_MESSAGE)
 
+    def test_get_completion_image_name(self):
+        self.assertEqual(self.riddle.get_completion_image_name(), self.COMPLETION_IMAGE_NAME)
+
+    def test_answer_case_insensitive(self):
+        """Answers should match regardless of case."""
+        self.assertTrue(self.riddle.test_answer("ANSWER"))
+        self.assertTrue(self.riddle.test_answer("Answer"))
+
+    def test_answer_with_whitespace(self):
+        """Leading/trailing whitespace should be stripped before comparison."""
+        self.assertTrue(self.riddle.test_answer("  answer  "))
+
+    def test_answer_none_returns_false(self):
+        self.assertFalse(self.riddle.test_answer(None))
+
+    def test_to_json(self):
+        data = self.riddle.to_json()
+        self.assertEqual(data["question"], self.RIDDLE)
+        self.assertEqual(data["answer"], self.ANSWER)
+        self.assertEqual(data["hint"], self.HINT)
+        self.assertEqual(data["image_name"], self.IMAGE_NAME)
+
+    def test_multiple_answers(self):
+        """A riddle with multiple accepted answers should accept any of them."""
+        multi = Riddle(
+            "Multi", ["egg", "eggs"], "hint", "img.png",
+            ["yes"], ["no"], "done", "done.png",
+        )
+        self.assertTrue(multi.test_answer("egg"))
+        self.assertTrue(multi.test_answer("Eggs"))
+        self.assertFalse(multi.test_answer("bacon"))
+
 
 class GamesTests(unittest.TestCase):
 

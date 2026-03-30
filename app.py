@@ -135,7 +135,6 @@ def load_user(user_id):
         return AdminUser()
     return None
 
-from flask import Markup  # if not already imported
 
 @app.route("/")
 def index():
