@@ -305,16 +305,20 @@ def riddle():
 
 @app.route("/restart")
 def reset():
-    current_riddle = riddle_manager.get_current_riddle()
-    if current_riddle is None:
-        riddle_manager.reset_progress()
+    selected_game = get_selected_game()
+    if selected_game:
+        current_riddle = selected_game.get_current_riddle()
+        if current_riddle is None:
+            selected_game.reset_progress()
     return redirect(url_for("riddle"))
 
 
 @admin_bp.route("/reset")
 def reset_admin_page():
-    riddle_manager.reset_progress()
-    return redirect((url_for("admin.progress")))
+    selected_game = get_selected_game()
+    if selected_game:
+        selected_game.reset_progress()
+    return redirect(url_for("admin.admin_index"))
 
 
 @admin_bp.route("/questions", methods=["GET", "POST"])
