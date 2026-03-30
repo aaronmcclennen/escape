@@ -11,11 +11,11 @@ from flask import jsonify
 from flask import Blueprint
 from flask import session
 from flask import flash
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask_login import LoginManager, UserMixin, login_user, current_user
+from werkzeug.security import check_password_hash
 from application.JsonLoader import ConfigLoader
-import secrets  # new import near the other imports
-from datetime import datetime, timezone, timedelta
+import secrets
+from datetime import datetime, timezone
 
 logging_format = (
     "%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s"

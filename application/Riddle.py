@@ -1,5 +1,6 @@
 import logging
 import random
+import re
 import secrets
 import string
 from datetime import datetime, timezone
@@ -221,7 +222,6 @@ class Game(object):
         If index is out of bounds, log an error and do nothing.
         Supports both list and dict for self.riddles.
         """
-        import logging
         if isinstance(self.riddles, list):
             if index < 0 or index >= len(self.riddles):
                 logging.error("replace_riddle_at_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
@@ -330,7 +330,6 @@ class Game(object):
         Construct a valid JSON file name based on the game's name.
         If there is no name, use 'riddle.json'.
         """
-        import re
         base = self.name if self.name else "riddle"
         logging.debug(f"Generating JSON filename from game name: {base}")
         # Replace spaces and non-alphanumeric characters with underscores
