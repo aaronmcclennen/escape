@@ -1,12 +1,6 @@
 {
   "riddles": [
     {
-    "question": "Enter the game code to begin",
-    "answer": ["dct"],
-    "hint": "...",
-    "image_name": "start.jpeg"
-    },
-    {
     "question": "The following function represents the number “legs” used by students in the room.  f(x) = 2^2(x)",
     "answer": ["204"],
     "hint": "to sit AND write",
