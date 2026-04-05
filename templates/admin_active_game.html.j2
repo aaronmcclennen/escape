@@ -1,15 +1,33 @@
-<!-- File: `templates/admin_active_game.html.j2` (update: add Start button form) -->
+<!-- File: `templates/admin_active_game.html.j2` -->
 <!doctype html>
 <html>
 <head>
   <title>Active Game - {{ game.name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .share-box { margin-top:16px; padding:12px; border:1px solid #b3e0ff; background:#e6f7ff; border-radius:6px; }
+    .share-box label { font-weight:600; display:block; margin-bottom:6px; }
+    .share-url-row { display:flex; gap:8px; align-items:center; }
+    .share-url-row input { flex:1; padding:8px; font-size:0.95em; border:1px solid #ccc; border-radius:4px; background:#fff; }
+    .copy-btn { padding:8px 14px; border:none; border-radius:4px; background:cadetblue; color:#fff; cursor:pointer; white-space:nowrap; }
+    .copy-btn:hover { background:#4a9a9a; }
+  </style>
 </head>
 <body>
   <div style="max-width:720px;margin:24px auto;padding:16px;border:1px solid #ddd;">
     <h2>Active Game: {{ game.name }}</h2>
     <p>Entry code:</p>
     <pre style="font-size:1.25em;padding:8px;border:1px solid #ccc;background:#fafafa;">{{ entry_code }}</pre>
+
+    <div class="share-box">
+      <label>Share this link with players:</label>
+      <div class="share-url-row">
+        <input id="join-url" type="text" value="{{ join_url }}" readonly onclick="this.select()">
+        <button class="copy-btn" onclick="copyJoinUrl()">Copy Link</button>
+      </div>
+      <small id="copy-msg" style="color:green;display:none;margin-top:4px;">✓ Copied!</small>
+    </div>
+
     <p style="margin-top:12px;">
       <a href="{{ url_for('admin.admin_index') }}" class="button">Cancel Game</a>
 
@@ -19,5 +37,16 @@
       </form>
     </p>
   </div>
+
+  <script>
+    function copyJoinUrl() {
+      var input = document.getElementById('join-url');
+      navigator.clipboard.writeText(input.value).then(function() {
+        var msg = document.getElementById('copy-msg');
+        msg.style.display = 'inline';
+        setTimeout(function(){ msg.style.display = 'none'; }, 2000);
+      });
+    }
+  </script>
 </body>
 </html>

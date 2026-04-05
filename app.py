@@ -665,7 +665,8 @@ def admin_start_game():
     # put staged game into this admin's user store and show active page
     user_store["selected_game"] = selected_game
     user_store["active_game"] = selected_game
-    return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
+    join_url = url_for("join_game", game_id=selected_game.name, entry_code=selected_game.get_entry_code(), _external=True)
+    return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code(), join_url=join_url)
 
 @admin_bp.route("/begin", methods=["POST"])
 def admin_begin_game():
@@ -718,7 +719,8 @@ def admin_current_question():
         return redirect(url_for("admin.admin_results"))
 
     # pass entry_code so initial render shows it immediately
-    return render_template("admin_current_question.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
+    join_url = url_for("join_game", game_id=selected_game.name, entry_code=selected_game.get_entry_code(), _external=True)
+    return render_template("admin_current_question.html.j2", game=selected_game, entry_code=selected_game.get_entry_code(), join_url=join_url)
 
 
 @admin_bp.route("/current_status")
@@ -794,7 +796,8 @@ def admin_resume_game():
         return redirect(url_for("admin.admin_index"))
     if selected_game.state == selected_game.STATE_IN_PROGRESS:
         return redirect(url_for("admin.admin_current_question"))
-    return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
+    join_url = url_for("join_game", game_id=selected_game.name, entry_code=selected_game.get_entry_code(), _external=True)
+    return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code(), join_url=join_url)
 
 
 @app.route("/results")

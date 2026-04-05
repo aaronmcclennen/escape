@@ -8,6 +8,12 @@
   <style>
     .center { text-align:center; }
     .riddle-box { max-width:800px; margin:20px auto; padding:16px; border:1px solid #ddd; background:#fff; }
+    .share-box { margin-top:12px; padding:10px; border:1px solid #b3e0ff; background:#e6f7ff; border-radius:6px; }
+    .share-box label { font-weight:600; display:block; margin-bottom:6px; font-size:0.9em; }
+    .share-url-row { display:flex; gap:8px; align-items:center; }
+    .share-url-row input { flex:1; padding:6px; font-size:0.9em; border:1px solid #ccc; border-radius:4px; background:#fff; }
+    .copy-btn { padding:6px 12px; border:none; border-radius:4px; background:cadetblue; color:#fff; cursor:pointer; white-space:nowrap; font-size:0.9em; }
+    .copy-btn:hover { background:#4a9a9a; }
   </style>
 </head>
 <body>
@@ -17,6 +23,15 @@
 
     <!-- show entry code for admin -->
     <p>Entry code: <strong id="entry_code">{{ entry_code or game.get_entry_code() or "" }}</strong></p>
+
+    <div class="share-box">
+      <label>Share this link with players:</label>
+      <div class="share-url-row">
+        <input id="join-url" type="text" value="{{ join_url }}" readonly onclick="this.select()">
+        <button class="copy-btn" onclick="copyJoinUrl()">Copy Link</button>
+      </div>
+      <small id="copy-msg" style="color:green;display:none;margin-top:4px;">✓ Copied!</small>
+    </div>
 
     <h3 id="riddle_heading">Riddle #<span id="riddle_id">-</span></h3>
     <p id="riddle_text">Loading...</p>
@@ -33,6 +48,16 @@
     </div>
   </div>
 
+<script>
+function copyJoinUrl() {
+  var input = document.getElementById('join-url');
+  navigator.clipboard.writeText(input.value).then(function() {
+    var msg = document.getElementById('copy-msg');
+    msg.style.display = 'inline';
+    setTimeout(function(){ msg.style.display = 'none'; }, 2000);
+  });
+}
+</script>
 <script type="text/javascript">
 (function poll(){
   $.getJSON("{{ url_for('admin.admin_current_status') }}")
