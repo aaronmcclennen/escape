@@ -116,6 +116,15 @@ class GameEntryCodeTests(unittest.TestCase):
         game.mark_staged()
         self.assertEqual(game.get_entry_code(), game.entry_code)
 
+    def test_entry_code_preserved_on_start(self):
+        """The code given to users during staging must survive the staged → in_progress transition."""
+        game = Game("EC", [_make_riddle()])
+        game.mark_staged()
+        staged_code = game.entry_code
+        self.assertIsNotNone(staged_code)
+        game.start()
+        self.assertEqual(game.entry_code, staged_code)
+
 
 class GameRiddleNavigationTests(unittest.TestCase):
     """Test riddle traversal: get_current_riddle, next_riddle, boundary conditions."""

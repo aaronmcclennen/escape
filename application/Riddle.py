@@ -230,13 +230,16 @@ class Game(object):
         """
         if self.state != self.STATE_STAGED:
             raise RiddleException(f"Cannot start game from state '{self.state}'; only '{self.STATE_STAGED}' may start.")
+        # preserve the entry code assigned during mark_staged so users
+        # who already copied it can still join
+        staged_code = self.entry_code
         self.state = self.STATE_IN_PROGRESS
         # reset attempt counts — reset_progress will also clear entry_code,
         # start_time, end_time, and user_scores
         self.reset_progress()
-        # set start time and fresh entry code after reset
+        # restore the staged entry code and set start time
+        self.entry_code = staged_code
         self.start_time = datetime.now(timezone.utc)
-        self.entry_code = self._generate_entry_code()
 
     def stop(self):
         """Stop an in-progress game and mark it ready; clear entry code."""
