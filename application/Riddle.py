@@ -1,9 +1,11 @@
+import bisect
 import logging
 import random
 import re
 import secrets
 import string
 from datetime import datetime, timezone
+from typing import Iterable, List, Optional
 
 
 class RiddleException(Exception):
@@ -74,9 +76,13 @@ class Riddle(object):
         return False
 
     def get_random_incorrect_response(self):
+        if not self.incorrect_responses:
+            return "Incorrect."
         return random.choice(self.incorrect_responses)
 
     def get_random_correct_response(self):
+        if not self.correct_responses:
+            return "Correct!"
         return random.choice(self.correct_responses)
 
     def to_json(self):
@@ -116,14 +122,8 @@ class Game(object):
 
     def get_current_riddle(self):
         try:
-            # if list-like
-            if isinstance(self.riddles, list):
-                return self.riddles[self.current_riddle_index]
-            # if dict-like, convert index to list order
-            else:
-                values = list(self.riddles.values())
-                return values[self.current_riddle_index]
-        except Exception:
+            return self.riddles[self.current_riddle_index]
+        except (IndexError, KeyError):
             logging.info("There are no more riddles. Returning None to caller.")
             return None
 
@@ -144,11 +144,7 @@ class Game(object):
     def get_total_attempt_count(self):
         attempts = 0
         try:
-            if isinstance(self.riddles, dict):
-                iterable = self.riddles.values()
-            else:
-                iterable = self.riddles
-            for riddle in iterable:
+            for riddle in self.riddles:
                 try:
                     attempts += riddle.get_attempts()
                 except Exception:
@@ -159,20 +155,16 @@ class Game(object):
 
     def get_completion_message(self):
         try:
-            if isinstance(self.riddles, list) and self.riddles:
+            if self.riddles:
                 return self.riddles[0].get_completion_message()
-            elif isinstance(self.riddles, dict) and self.riddles:
-                return list(self.riddles.values())[0].get_completion_message()
         except Exception:
             pass
         return ""
 
     def get_completion_image_name(self):
         try:
-            if isinstance(self.riddles, list) and self.riddles:
+            if self.riddles:
                 return self.riddles[0].get_completion_image_name()
-            elif isinstance(self.riddles, dict) and self.riddles:
-                return list(self.riddles.values())[0].get_completion_image_name()
         except Exception:
             pass
         return ""
@@ -183,19 +175,11 @@ class Game(object):
     def reset_progress(self):
         logging.warning("Resetting progress and attempt counts.")
         self.current_riddle_index = 0
-        # reset attempts for each riddle (support dict or list)
-        try:
-            if isinstance(self.riddles, dict):
-                iterable = self.riddles.values()
-            else:
-                iterable = self.riddles
-            for r in iterable:
-                try:
-                    r.reset_attempts()
-                except Exception:
-                    pass
-        except Exception:
-            logging.exception("Failed while resetting riddle attempts")
+        for r in self.riddles:
+            try:
+                r.reset_attempts()
+            except Exception:
+                pass
         # entry_code only applies if game is in progress
         if self.state == self.STATE_IN_PROGRESS:
             self.entry_code = self._generate_entry_code()
@@ -208,50 +192,36 @@ class Game(object):
 
     def remove_riddle_by_index(self, index: int) -> None:
         """Remove riddle at given index from the game's riddle list."""
-        if isinstance(self.riddles, list):
-            if 0 <= index < len(self.riddles):
-                del self.riddles[index]
-            else:
-                logging.error("remove_riddle_by_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
+        if 0 <= index < len(self.riddles):
+            del self.riddles[index]
         else:
-            raise RiddleException("Riddles are not stored in a list; cannot remove by index.")
-        
+            logging.error("remove_riddle_by_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
+
     def replace_riddle_at_index(self, index: int, new_riddle) -> None:
         """
         Replace the riddle at the given index with new_riddle.
         If index is out of bounds, log an error and do nothing.
-        Supports both list and dict for self.riddles.
         """
-        if isinstance(self.riddles, list):
-            if index < 0 or index >= len(self.riddles):
-                logging.error("replace_riddle_at_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
-                return
-            self.riddles[index] = new_riddle
-        else:
-            raise RiddleException("Riddles are not stored in a list; cannot remove by index.")
+        if index < 0 or index >= len(self.riddles):
+            logging.error("replace_riddle_at_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
+            return
+        self.riddles[index] = new_riddle
 
     def get_riddle_at_index(self, index: int):
         """
         Return the riddle at the given index, or None if out of bounds.
         """
-        if isinstance(self.riddles, list):
-            if 0 <= index < len(self.riddles):
-                return self.riddles[index]
-            else:
-                logging.error("get_riddle_at_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
-                return None
+        if 0 <= index < len(self.riddles):
+            return self.riddles[index]
         else:
-            raise RiddleException("Riddles are not stored in a list; cannot access by index.")
+            logging.error("get_riddle_at_index: index %d out of range (0..%d)", index, max(0, len(self.riddles) - 1))
+            return None
 
     def add_riddle_at_end(self, new_riddle):
         """
         Add a new riddle to the end of the game's riddle list.
-        Supports both list and dict for self.riddles.
         """
-        if isinstance(self.riddles, list):
-            self.riddles.append(new_riddle)
-        else:
-            raise RiddleException("Riddles are not stored in a list; cannot add new riddle.")
+        self.riddles.append(new_riddle)
 
     # state transitions
     def start(self):
@@ -261,12 +231,12 @@ class Game(object):
         if self.state != self.STATE_STAGED:
             raise RiddleException(f"Cannot start game from state '{self.state}'; only '{self.STATE_STAGED}' may start.")
         self.state = self.STATE_IN_PROGRESS
-        # reset attempt counts and user scores
+        # reset attempt counts — reset_progress will also clear entry_code,
+        # start_time, end_time, and user_scores
         self.reset_progress()
-        # set start time and fresh entry code
+        # set start time and fresh entry code after reset
         self.start_time = datetime.now(timezone.utc)
         self.entry_code = self._generate_entry_code()
-        self.user_scores = {}
 
     def stop(self):
         """Stop an in-progress game and mark it ready; clear entry code."""
@@ -313,13 +283,7 @@ class Game(object):
 
     def to_json(self):
         """Convert the game state to a JSON-serializable format."""
-        if isinstance(self.riddles, dict):
-            jriddles = [riddle.to_json() for riddle in self.riddles.values()]
-            logging.debug("Converted riddles from dict to list for JSON serialization.")
-        else:
-            jriddles = [riddle.to_json() for riddle in self.riddles]
-            logging.debug("Converted riddles from list for JSON serialization." )
-            logging.debug("Riddles for JSON serialization: {}".format(jriddles))
+        jriddles = [riddle.to_json() for riddle in self.riddles]
         return {
             "name": self.name,
             "riddles": jriddles
@@ -337,10 +301,6 @@ class Game(object):
         if not base:
             base = "riddle"
         return f"{base}.json"
-
-
-import bisect
-from typing import Iterable, List, Optional
 
 
 class Games(object):
@@ -367,18 +327,16 @@ class Games(object):
 
     def remove(self, game_or_name) -> bool:
         """Remove by object or by name. Returns True if removed, False otherwise."""
-        name = None
         if isinstance(game_or_name, Game):
-            target = game_or_name
             try:
-                self._games.remove(target)
+                self._games.remove(game_or_name)
                 return True
             except ValueError:
                 return False
         else:
-            name = (str(game_or_name) or "").lower()
+            target = (str(game_or_name) or "").lower()
             for i, g in enumerate(self._games):
-                if self._key(g) == name:
+                if self._key(g) == target:
                     del self._games[i]
                     return True
             return False

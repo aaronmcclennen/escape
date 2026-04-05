@@ -1,16 +1,12 @@
+import json
 import os
 import logging
 import uuid
 from application.Riddle import Game, Games, Riddle
-from flask import Flask
-from flask import request
-from flask import redirect
-from flask import url_for
-from flask import render_template
-from flask import jsonify
-from flask import Blueprint
-from flask import session
-from flask import flash
+from flask import (
+    Flask, request, redirect, url_for, render_template,
+    jsonify, Blueprint, session, flash, make_response,
+)
 from flask_login import LoginManager, UserMixin, login_user, current_user
 from werkzeug.security import check_password_hash
 from application.JsonLoader import ConfigLoader
@@ -32,7 +28,11 @@ BIRD_NAMES = [
 
 app = Flask(__name__)
 # set secret for session/cookie signing — read from env; fallback only for local dev
-app.secret_key = os.getenv("FLASK_SECRET_KEY", os.getenv("SECRET_KEY", "dev-secret-change-me"))
+_secret = os.getenv("FLASK_SECRET_KEY", os.getenv("SECRET_KEY"))
+if not _secret:
+    logging.warning("No FLASK_SECRET_KEY or SECRET_KEY set — using insecure default. Do NOT use in production.")
+    _secret = "dev-secret-change-me"
+app.secret_key = _secret
 
 login_manager = LoginManager(app)
 login_manager.login_view = "admin_login"
@@ -42,6 +42,47 @@ config_file = os.getenv("VERMUTEN_CONFIG")
 config_loader = ConfigLoader(config_file)
 games = Games()
 games.add(config_loader.game)
+
+
+def _format_duration(secs):
+    """Format a duration in seconds to a human-readable string."""
+    if secs is None:
+        return None
+    m, s = divmod(secs, 60)
+    h, m = divmod(m, 60)
+    if h:
+        return f"{h:d}h {m:d}m {s:d}s"
+    if m:
+        return f"{m:d}m {s:d}s"
+    return f"{s:d}s"
+
+
+def _compute_game_results(selected_game, include_current_user=False):
+    """
+    Compute duration and scores for a game.
+    Returns (duration_secs, duration_text, scores).
+    """
+    start = selected_game.start_time
+    end = selected_game.end_time
+    duration_secs = None
+    if start:
+        effective_end = end or datetime.now(timezone.utc)
+        duration_secs = int((effective_end - start).total_seconds())
+
+    scores = []
+    for uid, count in selected_game.user_scores.items():
+        display = USER_DATA.get(uid, {}).get("display_name", uid)
+        scores.append({"user_id": uid, "display_name": display, "correct": count})
+
+    if include_current_user:
+        cur_uid = session.get("user_id")
+        if cur_uid and cur_uid not in selected_game.user_scores:
+            display = USER_DATA.get(cur_uid, {}).get("display_name", cur_uid)
+            scores.append({"user_id": cur_uid, "display_name": display, "correct": 0})
+
+    scores = sorted(scores, key=lambda s: (-s["correct"], s["display_name"]))
+    return duration_secs, _format_duration(duration_secs), scores
+
 
 def get_selected_game():
     user_store = get_user_store()
@@ -499,10 +540,6 @@ def admin_move_question(index, direction):
 def admin_download_questions():
     try:
         game_data = get_selected_game().to_json()
-        # the riddle json is good #game_data = get_selected_game().get_current_riddle().to_json()
-        
-        import json
-        from flask import make_response
         response = make_response(json.dumps(game_data, indent=2))
         response.headers["Content-Type"] = "application/json"
         response.headers["Cache-Control"] = "no-cache"
@@ -760,7 +797,6 @@ def admin_resume_game():
     return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code())
 
 
-# python
 @app.route("/results")
 def results():
     """
@@ -774,49 +810,16 @@ def results():
         flash("No game selected.", "error")
         return redirect(url_for("index"))
 
-    # compute duration: use end_time if present, otherwise compute up to now
-    start = selected_game.start_time
-    end = selected_game.end_time
-    duration_secs = None
-    if start:
-        effective_end = end or datetime.now(timezone.utc)
-        duration_secs = int((effective_end - start).total_seconds())
-
-    # build a list of (display_name, correct_count)
-    scores = []
-    for uid, count in selected_game.user_scores.items():
-        display = USER_DATA.get(uid, {}).get("display_name", uid)
-        scores.append({"user_id": uid, "display_name": display, "correct": count})
-
-    # ensure the current user is included even if they scored zero
-    cur_uid = session.get("user_id")
-    if cur_uid and cur_uid not in selected_game.user_scores:
-        display = USER_DATA.get(cur_uid, {}).get("display_name", cur_uid)
-        scores.append({"user_id": cur_uid, "display_name": display, "correct": 0})
-
-    # sort by correct desc
-    scores = sorted(scores, key=lambda s: (-s["correct"], s["display_name"]))
-
-    def _format_duration(secs):
-        if secs is None:
-            return None
-        m, s = divmod(secs, 60)
-        h, m = divmod(m, 60)
-        if h:
-            return f"{h:d}h {m:d}m {s:d}s"
-        if m:
-            return f"{m:d}m {s:d}s"
-        return f"{s:d}s"
+    duration_secs, duration_text, scores = _compute_game_results(selected_game, include_current_user=True)
 
     return render_template("user_results.html.j2",
                            game=selected_game,
                            duration_seconds=duration_secs,
-                           duration_text=_format_duration(duration_secs),
+                           duration_text=duration_text,
                            scores=scores,
                            user_name=get_user_name())
 
 
-# python
 @admin_bp.route("/results")
 def admin_results():
     user_store = get_user_store()
@@ -826,35 +829,12 @@ def admin_results():
         flash("No game selected.", "error")
         return redirect(url_for("admin.admin_index"))
 
-    # compute duration: use end_time if present, otherwise compute up to now
-    start = selected_game.start_time
-    end = selected_game.end_time
-    duration_secs = None
-    if start:
-        effective_end = end or datetime.now(timezone.utc)
-        duration_secs = int((effective_end - start).total_seconds())
-
-    scores = []
-    for uid, count in selected_game.user_scores.items():
-        display = USER_DATA.get(uid, {}).get("display_name", uid)
-        scores.append({"user_id": uid, "display_name": display, "correct": count})
-    scores = sorted(scores, key=lambda s: (-s["correct"], s["display_name"]))
-
-    def _format_duration(secs):
-        if secs is None:
-            return None
-        m, s = divmod(secs, 60)
-        h, m = divmod(m, 60)
-        if h:
-            return f"{h:d}h {m:d}m {s:d}s"
-        if m:
-            return f"{m:d}m {s:d}s"
-        return f"{s:d}s"
+    duration_secs, duration_text, scores = _compute_game_results(selected_game)
 
     return render_template("admin_results.html.j2",
                            game=selected_game,
                            duration_seconds=duration_secs,
-                           duration_text=_format_duration(duration_secs),
+                           duration_text=duration_text,
                            scores=scores,
                            user_name=get_user_name())
 
