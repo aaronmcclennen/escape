@@ -37,11 +37,39 @@ setInterval('refresh_riddle()', 5000);
 </h2>
 <img id="riddle_img" src="./static/{{ image_name }}">
 {% if not advance %}
-    <form action="{{ url_for('riddle') }}" method="post">
+    <form id="guess-form" action="{{ url_for('riddle') }}" method="post">
       <label for="guess">Guess:</label>
       <input type="text" id="guess" name="guess" autocomplete="off">
-      <input type="submit" value="Submit">
+      <input type="submit" id="submit-btn" value="Submit">
     </form>
+    {% if cooldown_seconds and cooldown_seconds > 0 %}
+    <p id="cooldown-msg" style="color:darkred;text-align:center;font-weight:600;">
+      ⏳ Please wait <span id="cooldown-timer">{{ cooldown_seconds }}</span> seconds…
+    </p>
+    <script>
+    (function() {
+      var remaining = {{ cooldown_seconds }};
+      var btn = document.getElementById('submit-btn');
+      var input = document.getElementById('guess');
+      var msg = document.getElementById('cooldown-msg');
+      var timer = document.getElementById('cooldown-timer');
+      btn.disabled = true;
+      input.disabled = true;
+      var iv = setInterval(function() {
+        remaining--;
+        if (remaining <= 0) {
+          clearInterval(iv);
+          btn.disabled = false;
+          input.disabled = false;
+          msg.style.display = 'none';
+          input.focus();
+        } else {
+          timer.textContent = remaining;
+        }
+      }, 1000);
+    })();
+    </script>
+    {% endif %}
 <h2 id="hint">
     Hint: {{ hint }}
 </h2>

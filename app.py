@@ -11,7 +11,7 @@ from flask_login import LoginManager, UserMixin, login_user, current_user
 from werkzeug.security import check_password_hash
 from application.JsonLoader import ConfigLoader
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 logging_format = (
     "%(asctime)s - %(levelname)s - %(filename)s - %(funcName)s - %(message)s"
@@ -301,6 +301,22 @@ def riddle():
     if current_riddle is None:
         return redirect(url_for("results"))
 
+    riddle_index = selected_game.current_riddle_index
+
+    # --- rate-limit state management ---
+    # Rate-limit dict stored in user_store:
+    #   "rl_riddle_index": which question the tracking is for
+    #   "rl_wrong_times":  list of timestamps of recent wrong answers
+    #   "rl_delay":        current delay in seconds (0 = not yet activated)
+    #   "rl_locked_until": timestamp when the cooldown expires
+
+    # Reset rate-limit state when the question changes
+    if user_store.get("rl_riddle_index") != riddle_index:
+        user_store["rl_riddle_index"] = riddle_index
+        user_store["rl_wrong_times"] = []
+        user_store["rl_delay"] = 0
+        user_store["rl_locked_until"] = None
+
     if not guess:
         return render_template(
             "user_game.html.j2",
@@ -312,10 +328,17 @@ def riddle():
             advance=False,
             response=None,
             user_name=get_user_name(),
+            cooldown_seconds=0,
         )
+
+    now = datetime.now(timezone.utc)
 
     try:
         if current_riddle.test_answer(guess):
+            # correct — reset rate-limit state and advance
+            user_store["rl_wrong_times"] = []
+            user_store["rl_delay"] = 0
+            user_store["rl_locked_until"] = None
             # increment per-user correct count
             uid = session.get("user_id")
             if uid:
@@ -323,11 +346,57 @@ def riddle():
             selected_game.next_riddle()
             return redirect(url_for("riddle"))
         else:
+            # Wrong answer — check if user is currently rate-limited
+            locked_until = user_store.get("rl_locked_until")
+            if locked_until and now < locked_until:
+                remaining = int((locked_until - now).total_seconds()) + 1
+                return render_template(
+                    "user_game.html.j2",
+                    title=selected_game.name,
+                    riddle_id=selected_game.get_current_riddle_number(),
+                    riddle=current_riddle.get_riddle(),
+                    image_name=current_riddle.get_image_name(),
+                    hint=current_riddle.get_hint(),
+                    advance=False,
+                    response=f"Too many wrong answers — please wait {remaining} seconds before trying again.",
+                    user_name=get_user_name(),
+                    cooldown_seconds=remaining,
+                )
+
             logging.info("Bad guess. Wanted %s got %s", current_riddle.answer, guess)
+
+            # Record this wrong answer timestamp
+            wrong_times = user_store.get("rl_wrong_times", [])
+            wrong_times.append(now)
+            # Keep only timestamps within the last 10 seconds
+            cutoff = now - timedelta(seconds=10)
+            wrong_times = [t for t in wrong_times if t > cutoff]
+            user_store["rl_wrong_times"] = wrong_times
+
+            cooldown_seconds = 0
+
+            # Activate or escalate rate limiting: 3+ wrong answers in 10 seconds
+            if len(wrong_times) >= 3:
+                current_delay = user_store.get("rl_delay", 0)
+                if current_delay == 0:
+                    # first activation: 4 seconds
+                    current_delay = 4
+                else:
+                    # double each subsequent wrong answer
+                    current_delay = current_delay * 2
+                user_store["rl_delay"] = current_delay
+                locked_until = now + timedelta(seconds=current_delay)
+                user_store["rl_locked_until"] = locked_until
+                cooldown_seconds = current_delay
+
             try:
                 response = current_riddle.get_random_incorrect_response()
             except Exception:
                 response = "Incorrect."
+
+            if cooldown_seconds:
+                response = f"{response} (Slow down! Wait {cooldown_seconds}s before next guess.)"
+
             return render_template(
                 "user_game.html.j2",
                 title=selected_game.name,
@@ -338,6 +407,7 @@ def riddle():
                 response=response,
                 advance=False,
                 user_name=get_user_name(),
+                cooldown_seconds=cooldown_seconds,
             )
     except Exception:
         logging.exception("Error while evaluating guess")

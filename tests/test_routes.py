@@ -346,6 +346,60 @@ class AdminResultsTests(FlaskTestBase):
         self.assertEqual(self.test_game.state, Game.STATE_READY)
 
 
+class RateLimitTests(FlaskTestBase):
+    """Rate limiting must be per-user: one user's spam must not block another."""
+
+    def _start_game(self):
+        self.test_game.mark_staged()
+        self.test_game.start()
+
+    def _join(self, client):
+        client.post("/join", data={
+            "game_id": "TestGame",
+            "entry_code": self.test_game.get_entry_code(),
+        })
+
+    def test_rate_limit_is_per_user(self):
+        self._start_game()
+
+        # Two independent sessions (two different players)
+        user_a = app.test_client()
+        user_b = app.test_client()
+        self._join(user_a)
+        self._join(user_b)
+
+        # User A: spam 4 wrong answers quickly to trigger rate limiting
+        for _ in range(4):
+            user_a.post("/riddle", data={"guess": "wrong"})
+
+        # User A should now be rate-limited: submitting another guess shows cooldown
+        resp_a = user_a.post("/riddle", data={"guess": "wrong"}, follow_redirects=True)
+        self.assertIn(b"please wait", resp_a.data.lower())
+
+        # User B should NOT be rate-limited and can still guess normally
+        resp_b = user_b.post("/riddle", data={"guess": "wrong"}, follow_redirects=True)
+        self.assertNotIn(b"please wait", resp_b.data.lower())
+        # User B should still see the riddle
+        self.assertIn(b"Q1", resp_b.data)
+
+    def test_rate_limit_resets_on_new_question(self):
+        self._start_game()
+        user_a = app.test_client()
+        self._join(user_a)
+
+        # Trigger rate limiting
+        for _ in range(4):
+            user_a.post("/riddle", data={"guess": "wrong"})
+
+        # Now answer correctly to advance to next question
+        user_a.post("/riddle", data={"guess": "a1"}, follow_redirects=True)
+
+        # On the new question, user should NOT be rate-limited
+        resp = user_a.post("/riddle", data={"guess": "wrong"}, follow_redirects=True)
+        self.assertNotIn(b"please wait", resp.data.lower())
+        self.assertIn(b"Q2", resp.data)
+
+
 if __name__ == "__main__":
     unittest.main()
 
