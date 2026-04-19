@@ -872,6 +872,29 @@ def admin_resume_game():
     return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code(), join_url=join_url)
 
 
+@app.route("/data")
+def data():
+    user_store = get_user_store()
+    selected_game = user_store.get("selected_game") if user_store else None
+    if not selected_game:
+        return jsonify({"game_over": True})
+
+    try:
+        current_riddle = selected_game.get_riddle_at_index(selected_game.current_riddle_index)
+    except Exception:
+        current_riddle = None
+
+    if current_riddle is None:
+        return jsonify({"game_over": True})
+
+    return jsonify({
+        "riddle_id": selected_game.get_current_riddle_number(),
+        "riddle": current_riddle.get_riddle(),
+        "hint": current_riddle.get_hint(),
+        "image_name": "./static/" + current_riddle.get_image_name(),
+    })
+
+
 @app.route("/results")
 def results():
     """

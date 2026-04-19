@@ -6,10 +6,15 @@
 </head>
 <link rel="stylesheet" href="./static/style.css">
 <script type=text/javascript>
+var currentRiddleId = "{{ riddle_id }}";
 function refresh_riddle() {
     $.getJSON("/data",
             function (data) {
                 if (data.hasOwnProperty("game_over")) {
+                    location.reload();
+                }
+                else if (data["riddle_id"] != currentRiddleId) {
+                    // Another user advanced the question — reload to clear cooldowns and show new riddle
                     location.reload();
                 }
                 else {
@@ -21,7 +26,7 @@ function refresh_riddle() {
             }
     );
 }
-setInterval('refresh_riddle()', 5000);
+setInterval('refresh_riddle()', 3000);
 </script>
 
 {% if user_name %}
