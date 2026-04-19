@@ -8,6 +8,7 @@ start, begin, current, cancel, resume, results, restart).
 """
 import os
 import unittest
+from datetime import datetime, timezone
 
 # Set env vars BEFORE importing app so it doesn't blow up on missing config
 os.environ.setdefault("VERMUTEN_CONFIG", "./tests/test_config.json")
@@ -398,6 +399,36 @@ class RateLimitTests(FlaskTestBase):
         resp = user_a.post("/riddle", data={"guess": "wrong"}, follow_redirects=True)
         self.assertNotIn(b"please wait", resp.data.lower())
         self.assertIn(b"Q2", resp.data)
+
+    def test_fifth_wrong_answer_causes_16_second_delay(self):
+        """After 3 wrongs → 4s, 4th wrong → 8s, 5th wrong → 16s."""
+        self._start_game()
+        user = app.test_client()
+        self._join(user)
+
+        # Wrongs 1-3: the 3rd triggers a 4-second cooldown
+        for _ in range(3):
+            user.post("/riddle", data={"guess": "wrong"})
+
+        with user.session_transaction() as sess:
+            uid = sess["user_id"]
+        store = USER_DATA[uid]
+        self.assertEqual(store["rl_delay"], 4, "3rd wrong answer should set delay to 4s")
+        # expire the lockout
+        store["rl_locked_until"] = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+        # Wrong 4: cooldown expired, so this goes through and escalates to 8s
+        resp4 = user.post("/riddle", data={"guess": "wrong"}, follow_redirects=True)
+        self.assertEqual(store["rl_delay"], 8, "4th wrong answer should escalate delay to 8s")
+        self.assertIn(b"Wait 8s", resp4.data)
+
+        # expire the 8s lockout
+        store["rl_locked_until"] = datetime(2000, 1, 1, tzinfo=timezone.utc)
+
+        # Wrong 5: cooldown expired, escalates to 16s
+        resp5 = user.post("/riddle", data={"guess": "wrong"}, follow_redirects=True)
+        self.assertEqual(store["rl_delay"], 16, "5th wrong answer should escalate delay to 16s")
+        self.assertIn(b"Wait 16s", resp5.data)
 
 
 if __name__ == "__main__":
