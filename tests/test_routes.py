@@ -422,10 +422,12 @@ class RateLimitTests(FlaskTestBase):
         self.assertEqual(store["rl_delay"], 8, "4th wrong answer should escalate delay to 8s")
         self.assertIn(b"Wait 8s", resp4.data)
 
-        # expire the 8s lockout
+        # expire the 8s lockout AND clear old timestamps to simulate real elapsed time
+        # (in production, >10s will have passed so timestamps fall out of the window)
         store["rl_locked_until"] = datetime(2000, 1, 1, tzinfo=timezone.utc)
+        store["rl_wrong_times"] = []
 
-        # Wrong 5: cooldown expired, escalates to 16s
+        # Wrong 5: must still escalate to 16s because rl_delay is already active
         resp5 = user.post("/riddle", data={"guess": "wrong"}, follow_redirects=True)
         self.assertEqual(store["rl_delay"], 16, "5th wrong answer should escalate delay to 16s")
         self.assertIn(b"Wait 16s", resp5.data)

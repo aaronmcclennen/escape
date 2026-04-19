@@ -374,10 +374,12 @@ def riddle():
             user_store["rl_wrong_times"] = wrong_times
 
             cooldown_seconds = 0
+            current_delay = user_store.get("rl_delay", 0)
 
-            # Activate or escalate rate limiting: 3+ wrong answers in 10 seconds
-            if len(wrong_times) >= 3:
-                current_delay = user_store.get("rl_delay", 0)
+            # Activate or escalate rate limiting:
+            # - Initial activation: 3+ wrong answers in 10 seconds
+            # - Once active (rl_delay > 0): every subsequent wrong answer escalates
+            if current_delay > 0 or len(wrong_times) >= 3:
                 if current_delay == 0:
                     # first activation: 4 seconds
                     current_delay = 4
