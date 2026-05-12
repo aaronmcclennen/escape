@@ -44,33 +44,43 @@
   </p>
 {% endif %}
 
-<ul>
+<ul style="list-style:none;padding-left:0;max-width:900px;margin:0 auto;">
     {% for r in game.riddles %}
       {% set idx = loop.index0 %}
-      <li>
-        <strong>({{ idx }}) {{ r.get_riddle() }}</strong><br>
-        <em>Answer(s):</em> {{ r.answer|join(", ") }}<br>
-        <em>Hint:</em> {{ r.get_hint() }}<br>
-        <em>Image:</em> {{ r.get_image_name() }}<br>
+      <li style="margin-bottom:24px;">
+        <div style="background:#fff;border:1px solid #d9e2ec;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,0.06);padding:18px 20px;">
+          <div style="font-size:0.9em;color:#5c6b7a;font-weight:600;margin-bottom:8px;">Question {{ idx + 1 }}</div>
+          <div style="font-size:1.05em;font-weight:700;margin-bottom:12px;line-height:1.4;">{{ r.get_riddle() }}</div>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:start;">
+            <em>Answer(s):</em>
+            <span>{{ r.answer|join(", ") }}</span>
+            <em>Hint:</em>
+            <span>{{ r.get_hint() }}</span>
+            <em>Image:</em>
+            <span>{{ r.get_image_name() }}</span>
+          </div>
 
-        {# Move controls: hide Up for first, Down for last #}
-        {% if idx > 0 %}
-          <form action="{{ url_for('admin.admin_move_question', index=idx, direction='up') }}" method="post" style="display:inline">
-            <button type="submit">Move Up</button>
-          </form>
-        {% endif %}
-        {% if idx < total_count - 1 %}
-          <form action="{{ url_for('admin.admin_move_question', index=idx, direction='down') }}" method="post" style="display:inline">
-            <button type="submit">Move Down</button>
-          </form>
-        {% endif %}
+          {# Move controls: hide Up for first, Down for last #}
+          <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:8px;">
+            {% if idx > 0 %}
+              <form action="{{ url_for('admin.admin_move_question', index=idx, direction='up') }}" method="post" style="display:inline">
+                <button type="submit">Move Up</button>
+              </form>
+            {% endif %}
+            {% if idx < total_count - 1 %}
+              <form action="{{ url_for('admin.admin_move_question', index=idx, direction='down') }}" method="post" style="display:inline">
+                <button type="submit">Move Down</button>
+              </form>
+            {% endif %}
 
-        <form action="{{ url_for('admin.admin_edit_question', index=idx) }}" method="get" style="display:inline">
-          <button type="submit">Edit</button>
-        </form>
-        <form action="{{ url_for('admin.admin_delete_question', index=idx) }}" method="post" style="display:inline" onsubmit="return confirm('Delete question?')">
-          <button type="submit">Delete</button>
-        </form>
+            <form action="{{ url_for('admin.admin_edit_question', index=idx) }}" method="get" style="display:inline">
+              <button type="submit">Edit</button>
+            </form>
+            <form action="{{ url_for('admin.admin_delete_question', index=idx) }}" method="post" style="display:inline" onsubmit="return confirm('Delete question?')">
+              <button type="submit">Delete</button>
+            </form>
+          </div>
+        </div>
       </li>
     {% endfor %}
 </ul>
