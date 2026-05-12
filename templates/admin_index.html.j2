@@ -54,9 +54,9 @@
             <button type="submit" class="button">Manage Questions</button>
             <button type="submit" class="button" formaction="{{ url_for('admin.admin_download_questions') }}" formmethod="get">Download JSON</button>
 
-            {# Start Game lives inside the outer form so it can read game_id from the dropdown #}
+            {# Stage Game lives inside the outer form so it can read game_id from the dropdown #}
             {% if not (user_active and user_active.state in (user_active.STATE_STAGED, user_active.STATE_IN_PROGRESS)) %}
-              <button type="submit" class="button" formaction="{{ url_for('admin.admin_start_game') }}" formmethod="post" style="margin-left:8px;">Start Game</button>
+              <button type="submit" class="button" formaction="{{ url_for('admin.admin_start_game') }}" formmethod="post" style="margin-left:8px;">Stage Game</button>
             {% endif %}
 
             {# Delete Game #}

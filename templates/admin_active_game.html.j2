@@ -41,7 +41,7 @@
 
     <p style="margin-top:16px;">
       <form action="{{ url_for('admin.admin_cancel_game') }}" method="post" style="display:inline"
-            onsubmit="return confirm('Cancel this game? All progress will be lost.');">
+            onsubmit="return confirm('Cancel this game? All progress will be lost. Players will have to reload the waiting room page.');">
         <button type="submit" class="button" style="background:#ff4d4d;color:#fff;">Cancel Game</button>
       </form>
 
