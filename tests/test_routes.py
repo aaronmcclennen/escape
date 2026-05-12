@@ -347,6 +347,206 @@ class AdminResultsTests(FlaskTestBase):
         self.assertEqual(self.test_game.state, Game.STATE_READY)
 
 
+class LobbyStatusTests(FlaskTestBase):
+    """Tests for the /admin/lobby_status endpoint and the player-eviction logic."""
+
+    def _stage_game(self):
+        """Admin stages the test game and returns the entry code."""
+        self._admin_post("/admin/start", data={"game_id": "TestGame"})
+        return self.test_game.get_entry_code()
+
+    def _join_as_player(self, client, entry_code):
+        """Join the staged game from an independent player client."""
+        client.post("/join", data={
+            "game_id": "TestGame",
+            "entry_code": entry_code,
+        })
+
+    # ── lobby_status endpoint ────────────────────────────────────────────────
+
+    def test_lobby_status_returns_400_without_active_game(self):
+        resp = self._admin_get("/admin/lobby_status")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_lobby_status_returns_empty_before_any_player_joins(self):
+        self._stage_game()
+        resp = self._admin_get("/admin/lobby_status")
+        self.assertEqual(resp.status_code, 200)
+        data = resp.get_json()
+        self.assertIn("players", data)
+        self.assertIn("count", data)
+        self.assertEqual(data["count"], 0)
+        self.assertEqual(data["players"], [])
+
+    def test_lobby_status_counts_joined_players(self):
+        entry_code = self._stage_game()
+
+        player_a = app.test_client()
+        player_b = app.test_client()
+        self._join_as_player(player_a, entry_code)
+        self._join_as_player(player_b, entry_code)
+
+        resp = self._admin_get("/admin/lobby_status")
+        data = resp.get_json()
+        self.assertEqual(data["count"], 2)
+        self.assertEqual(len(data["players"]), 2)
+
+    def test_lobby_status_includes_bird_alias(self):
+        """Each player should appear by their bird alias, not their UUID."""
+        entry_code = self._stage_game()
+        player = app.test_client()
+        self._join_as_player(player, entry_code)
+
+        # Retrieve this player's display name from USER_DATA
+        with player.session_transaction() as sess:
+            uid = sess["user_id"]
+        expected_name = USER_DATA[uid]["display_name"]
+
+        resp = self._admin_get("/admin/lobby_status")
+        data = resp.get_json()
+        self.assertIn(expected_name, data["players"])
+        # UUID must NOT appear raw in the names list
+        self.assertNotIn(uid, data["players"])
+
+    def test_lobby_status_does_not_count_players_from_other_games(self):
+        """Players joined to a different game must not appear in this lobby."""
+        entry_code = self._stage_game()
+
+        # second game that a stray player joins
+        other_game = Game("OtherGame", [_make_riddle()])
+        games.add(other_game)
+        other_game.mark_staged()
+
+        stray = app.test_client()
+        stray.post("/join", data={
+            "game_id": "OtherGame",
+            "entry_code": other_game.get_entry_code(),
+        })
+
+        # real player joins TestGame
+        player = app.test_client()
+        self._join_as_player(player, entry_code)
+
+        resp = self._admin_get("/admin/lobby_status")
+        data = resp.get_json()
+        self.assertEqual(data["count"], 1)
+
+    # ── cancel evicts players ────────────────────────────────────────────────
+
+    def test_cancel_clears_player_selected_game(self):
+        """After cancelling, every joined player's selected_game must be None."""
+        entry_code = self._stage_game()
+        player = app.test_client()
+        self._join_as_player(player, entry_code)
+
+        with player.session_transaction() as sess:
+            uid = sess["user_id"]
+        # confirm player is listed before cancel
+        self.assertIs(USER_DATA[uid]["selected_game"], self.test_game)
+
+        self._admin_post("/admin/cancel")
+
+        self.assertIsNone(USER_DATA[uid]["selected_game"])
+
+    def test_cancel_clears_rate_limit_state_for_players(self):
+        """Cancelling a game must also wipe any per-user rate-limit state."""
+        self.test_game.mark_staged()
+        self.test_game.start()
+        entry_code = self.test_game.get_entry_code()
+
+        player = app.test_client()
+        self._join_as_player(player, entry_code)
+
+        with player.session_transaction() as sess:
+            uid = sess["user_id"]
+
+        # plant some rate-limit state
+        USER_DATA[uid].update({
+            "rl_delay": 8,
+            "rl_locked_until": datetime(2099, 1, 1, tzinfo=timezone.utc),
+            "rl_wrong_times": [datetime.now(timezone.utc)],
+        })
+
+        # admin needs active_game set; stage flow sets it, but we started manually
+        admin_store = None
+        for data in USER_DATA.values():
+            if data.get("active_game") is None and data.get("selected_game") is self.test_game:
+                pass
+        # set active_game via the admin session
+        self._admin_post("/admin/start", data={"game_id": "TestGame"})  # stages a fresh game
+        # Instead, manipulate the admin user_store directly
+        with self.client.session_transaction() as admin_sess:
+            admin_uid = admin_sess["user_id"]
+        USER_DATA[admin_uid]["active_game"] = self.test_game
+
+        self._admin_post("/admin/cancel")
+
+        store = USER_DATA[uid]
+        self.assertEqual(store.get("rl_delay"), 0)
+        self.assertIsNone(store.get("rl_locked_until"))
+        self.assertEqual(store.get("rl_wrong_times"), [])
+
+    def test_players_do_not_reappear_in_next_lobby_after_cancel(self):
+        """Players evicted by cancel must not show up when the same game is re-staged."""
+        entry_code = self._stage_game()
+
+        player = app.test_client()
+        self._join_as_player(player, entry_code)
+
+        # cancel
+        self._admin_post("/admin/cancel")
+        self.assertEqual(self.test_game.state, Game.STATE_READY)
+
+        # re-stage the same game
+        self._admin_post("/admin/start", data={"game_id": "TestGame"})
+        self.assertEqual(self.test_game.state, Game.STATE_STAGED)
+
+        resp = self._admin_get("/admin/lobby_status")
+        data = resp.get_json()
+        self.assertEqual(data["count"], 0,
+                         "Previously evicted player must not appear in the new lobby")
+
+    # ── restart evicts players ───────────────────────────────────────────────
+
+    def test_restart_clears_player_selected_game(self):
+        """After results/restart every joined player's selected_game must be None."""
+        entry_code = self._stage_game()
+        player = app.test_client()
+        self._join_as_player(player, entry_code)
+
+        with player.session_transaction() as sess:
+            uid = sess["user_id"]
+
+        # advance through all riddles so admin can reach results
+        self._admin_post("/admin/begin")
+        self.test_game.next_riddle()
+        self.test_game.next_riddle()
+
+        self._admin_post("/admin/results/restart")
+
+        self.assertIsNone(USER_DATA[uid]["selected_game"])
+
+    def test_players_do_not_reappear_in_next_lobby_after_restart(self):
+        """Players evicted by restart must not show up when the game is re-staged."""
+        entry_code = self._stage_game()
+        player = app.test_client()
+        self._join_as_player(player, entry_code)
+
+        # complete and restart
+        self._admin_post("/admin/begin")
+        self.test_game.next_riddle()
+        self.test_game.next_riddle()
+        self._admin_post("/admin/results/restart")
+        self.assertEqual(self.test_game.state, Game.STATE_READY)
+
+        # re-stage
+        self._admin_post("/admin/start", data={"game_id": "TestGame"})
+        resp = self._admin_get("/admin/lobby_status")
+        data = resp.get_json()
+        self.assertEqual(data["count"], 0,
+                         "Previously evicted player must not appear in the new lobby")
+
+
 class RateLimitTests(FlaskTestBase):
     """Rate limiting must be per-user: one user's spam must not block another."""
 

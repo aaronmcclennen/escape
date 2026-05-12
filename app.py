@@ -152,6 +152,17 @@ def get_user_name():
     store = get_user_store()
     return store.get("display_name") if store else None
 
+def _clear_player_game_selections(game):
+    """Remove all player references to *game* so they don't reappear in a future lobby."""
+    for uid, data in USER_DATA.items():
+        if data.get("selected_game") is game:
+            data["selected_game"] = None
+            # also reset any rate-limit state tied to this game
+            data["rl_riddle_index"] = None
+            data["rl_wrong_times"] = []
+            data["rl_delay"] = 0
+            data["rl_locked_until"] = None
+
 @admin_bp.before_request
 def require_admin_login():
     # allow static files and the login endpoint through
@@ -809,7 +820,8 @@ def admin_lobby_status():
 
     players = []
     for uid, data in USER_DATA.items():
-        if data.get("selected_game") is selected_game:
+        # exclude the admin who started the game: they have active_game == selected_game
+        if data.get("selected_game") is selected_game and data.get("active_game") is not selected_game:
             players.append(data.get("display_name", uid))
 
     return jsonify({"players": players, "count": len(players)})
@@ -870,6 +882,7 @@ def admin_cancel_game():
         flash("Failed to cancel the game.", "error")
         return redirect(url_for("admin.admin_current_question"))
 
+    _clear_player_game_selections(selected_game)
     user_store["active_game"] = None
     flash("Game cancelled.", "info")
     return redirect(url_for("admin.admin_index"))
@@ -975,6 +988,7 @@ def admin_results_restart():
         flash("Failed to restart the game.", "error")
         return redirect(url_for("admin.admin_results"))
 
+    _clear_player_game_selections(selected_game)
     user_store["active_game"] = None
     flash("Game restarted.", "info")
     return redirect(url_for("admin.admin_index"))
