@@ -4,6 +4,7 @@
 <head>
   <title>Active Game - {{ game.name }}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <style>
     .share-box { margin-top:16px; padding:12px; border:1px solid #b3e0ff; background:#e6f7ff; border-radius:6px; }
     .share-box label { font-weight:600; display:block; margin-bottom:6px; }
@@ -11,6 +12,11 @@
     .share-url-row input { flex:1; padding:8px; font-size:0.95em; border:1px solid #ccc; border-radius:4px; background:#fff; }
     .copy-btn { padding:8px 14px; border:none; border-radius:4px; background:cadetblue; color:#fff; cursor:pointer; white-space:nowrap; }
     .copy-btn:hover { background:#4a9a9a; }
+    .players-box { margin-top:16px; padding:12px; border:1px solid #c3e6cb; background:#f0fff4; border-radius:6px; }
+    .players-box h3 { margin:0 0 8px 0; font-size:1em; color:#2d6a4f; }
+    #player-list { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:6px; }
+    #player-list li { background:#d4edda; border:1px solid #b2d8bb; border-radius:12px; padding:3px 10px; font-size:0.9em; color:#155724; }
+    #player-count { font-weight:600; }
   </style>
 </head>
 <body>
@@ -28,8 +34,16 @@
       <small id="copy-msg" style="color:green;display:none;margin-top:4px;">✓ Copied!</small>
     </div>
 
-    <p style="margin-top:12px;">
-      <a href="{{ url_for('admin.admin_index') }}" class="button">Cancel Game</a>
+    <div class="players-box">
+      <h3>Players joined: <span id="player-count">0</span></h3>
+      <ul id="player-list"><li style="color:#888;font-style:italic;">Waiting for players…</li></ul>
+    </div>
+
+    <p style="margin-top:16px;">
+      <form action="{{ url_for('admin.admin_cancel_game') }}" method="post" style="display:inline"
+            onsubmit="return confirm('Cancel this game? All progress will be lost.');">
+        <button type="submit" class="button" style="background:#ff4d4d;color:#fff;">Cancel Game</button>
+      </form>
 
       <!-- Start button: posts to admin.begin to transition staged -> in_progress -->
       <form action="{{ url_for('admin.admin_begin_game') }}" method="post" style="display:inline">
@@ -47,6 +61,24 @@
         setTimeout(function(){ msg.style.display = 'none'; }, 2000);
       });
     }
+
+    (function pollLobby() {
+      $.getJSON("{{ url_for('admin.admin_lobby_status') }}")
+        .done(function(data) {
+          if (!data || data.error) { setTimeout(pollLobby, 3000); return; }
+          $('#player-count').text(data.count || 0);
+          var list = $('#player-list');
+          list.empty();
+          if (data.players && data.players.length > 0) {
+            $.each(data.players, function(i, name) {
+              list.append($('<li>').text(name));
+            });
+          } else {
+            list.append('<li style="color:#888;font-style:italic;">Waiting for players…</li>');
+          }
+        })
+        .always(function() { setTimeout(pollLobby, 3000); });
+    })();
   </script>
 </body>
 </html>

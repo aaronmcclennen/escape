@@ -795,6 +795,26 @@ def admin_current_question():
     return render_template("admin_current_question.html.j2", game=selected_game, entry_code=selected_game.get_entry_code(), join_url=join_url)
 
 
+@admin_bp.route("/lobby_status")
+def admin_lobby_status():
+    """
+    Return JSON with the list of players who have joined the active (staged) game.
+    Polled by the admin_active_game page while waiting for players.
+    """
+    user_store = get_user_store()
+    selected_game = user_store.get("active_game") if user_store else None
+
+    if not selected_game:
+        return jsonify({"error": "no_active_game"}), 400
+
+    players = []
+    for uid, data in USER_DATA.items():
+        if data.get("selected_game") is selected_game:
+            players.append(data.get("display_name", uid))
+
+    return jsonify({"players": players, "count": len(players)})
+
+
 @admin_bp.route("/current_status")
 def admin_current_status():
     """
