@@ -17,9 +17,6 @@ It is important to note that there is a single instance of this server so, if de
 ### /
 Returns the puzzle.
 
-## Progress Report
-### /admin/progress
-Returns a status page.
 
 ## Progress Reset
 ### /admin/reset
