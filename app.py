@@ -314,6 +314,12 @@ def riddle():
 
     riddle_index = selected_game.current_riddle_index
 
+    # --- elapsed time from game start ---
+    elapsed_seconds = 0
+    if selected_game.start_time:
+        now = datetime.now(timezone.utc)
+        elapsed_seconds = int((now - selected_game.start_time).total_seconds())
+
     # --- rate-limit state management ---
     # Rate-limit dict stored in user_store:
     #   "rl_riddle_index": which question the tracking is for
@@ -340,6 +346,7 @@ def riddle():
             response=None,
             user_name=get_user_name(),
             cooldown_seconds=0,
+            elapsed_seconds=elapsed_seconds,
         )
 
     now = datetime.now(timezone.utc)
@@ -372,6 +379,7 @@ def riddle():
                     response=f"Too many wrong answers — please wait {remaining} seconds before trying again.",
                     user_name=get_user_name(),
                     cooldown_seconds=remaining,
+                    elapsed_seconds=elapsed_seconds,
                 )
 
             logging.info("Bad guess. Wanted %s got %s", current_riddle.answer, guess)
@@ -421,6 +429,7 @@ def riddle():
                 advance=False,
                 user_name=get_user_name(),
                 cooldown_seconds=cooldown_seconds,
+                elapsed_seconds=elapsed_seconds,
             )
     except Exception:
         logging.exception("Error while evaluating guess")
@@ -801,9 +810,15 @@ def admin_current_question():
     if current is None:
         return redirect(url_for("admin.admin_results"))
 
+    # Calculate elapsed time from game start
+    elapsed_seconds = 0
+    if selected_game.start_time:
+        now = datetime.now(timezone.utc)
+        elapsed_seconds = int((now - selected_game.start_time).total_seconds())
+
     # pass entry_code so initial render shows it immediately
     join_url = url_for("join_game", game_id=selected_game.name, entry_code=selected_game.get_entry_code(), _external=True)
-    return render_template("admin_current_question.html.j2", game=selected_game, entry_code=selected_game.get_entry_code(), join_url=join_url)
+    return render_template("admin_current_question.html.j2", game=selected_game, entry_code=selected_game.get_entry_code(), join_url=join_url, elapsed_seconds=elapsed_seconds)
 
 
 @admin_bp.route("/lobby_status")
@@ -842,12 +857,19 @@ def admin_current_status():
     # Get current riddle (returns None when game complete or out of bounds)
     current = selected_game.get_riddle_at_index(selected_game.current_riddle_index)
 
+    # Calculate elapsed time from game start
+    elapsed_seconds = 0
+    if selected_game.start_time:
+        now = datetime.now(timezone.utc)
+        elapsed_seconds = int((now - selected_game.start_time).total_seconds())
+
     if current is None:
         return jsonify({
             "game_over": True,
             "state": selected_game.state,
             "riddle_id": None,
             "entry_code": selected_game.get_entry_code(),
+            "elapsed_seconds": elapsed_seconds,
         })
 
     return jsonify({
@@ -859,6 +881,7 @@ def admin_current_status():
         "image_name": current.get_image_name(),
         "attempts": current.get_attempts(),
         "entry_code": selected_game.get_entry_code(),
+        "elapsed_seconds": elapsed_seconds,
     })
 @admin_bp.route("/cancel", methods=["POST"])
 def admin_cancel_game():
@@ -920,11 +943,18 @@ def data():
     if current_riddle is None:
         return jsonify({"game_over": True})
 
+    # Calculate elapsed time from game start
+    elapsed_seconds = 0
+    if selected_game.start_time:
+        now = datetime.now(timezone.utc)
+        elapsed_seconds = int((now - selected_game.start_time).total_seconds())
+
     return jsonify({
         "riddle_id": selected_game.get_current_riddle_number(),
         "riddle": current_riddle.get_riddle(),
         "hint": current_riddle.get_hint(),
         "image_name": "./static/" + current_riddle.get_image_name(),
+        "elapsed_seconds": elapsed_seconds,
     })
 
 

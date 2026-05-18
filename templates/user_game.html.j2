@@ -7,6 +7,19 @@
 <link rel="stylesheet" href="./static/style.css">
 <script type=text/javascript>
 var currentRiddleId = "{{ riddle_id }}";
+var startElapsed = {{ elapsed_seconds }};
+var elapsedStart = Date.now();
+
+function updateElapsedTime() {
+  var elapsed = startElapsed + Math.floor((Date.now() - elapsedStart) / 1000);
+  var mins = Math.floor(elapsed / 60);
+  var secs = elapsed % 60;
+  var display = mins + ":" + (secs < 10 ? "0" : "") + secs;
+  $("#elapsed-time").text("Elapsed: " + display);
+}
+
+setInterval(updateElapsedTime, 1000);
+
 function refresh_riddle() {
     $.getJSON("/data",
             function (data) {
@@ -22,6 +35,11 @@ function refresh_riddle() {
                     $("#riddle").text(data["riddle"]);
                     $("#hint").text(data["hint"]);
                     $("#riddle_img").attr("src", data["image_name"]);
+                    // Update elapsed time from server
+                    if (typeof data["elapsed_seconds"] !== "undefined") {
+                      startElapsed = data["elapsed_seconds"];
+                      elapsedStart = Date.now();
+                    }
                 }
             }
     );
@@ -32,6 +50,10 @@ setInterval('refresh_riddle()', 3000);
 {% if user_name %}
   <p class="player-name">Player: <strong>{{ user_name }}</strong></p>
 {% endif %}
+
+<div style="text-align:center;color:#666;font-size:0.95em;margin-bottom:8px;">
+  <span id="elapsed-time">Elapsed: {{ "%d:%02d" | format(elapsed_seconds // 60, elapsed_seconds % 60) }}</span>
+</div>
 
 <h1 id="riddle_id">
     Riddle #{{ riddle_id }}
