@@ -184,6 +184,13 @@ class RiddleFlowTests(FlaskTestBase):
         self.assertEqual(resp2.status_code, 302)
         self.assertIn("/results", resp2.headers["Location"])
 
+    def test_completing_all_riddles_sets_game_ready(self):
+        self._join_started_game()
+        self.client.post("/riddle", data={"guess": "a1"})
+        self.client.post("/riddle", data={"guess": "a2"})
+        self.assertEqual(self.test_game.state, Game.STATE_READY)
+        self.assertIsNone(self.test_game.entry_code)
+
 
 # ─── Admin routes ────────────────────────────────────────────────────────────
 

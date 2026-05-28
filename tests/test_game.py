@@ -155,6 +155,15 @@ class GameRiddleNavigationTests(unittest.TestCase):
             self.game.next_riddle()
         self.assertIsNotNone(self.game.end_time)
 
+    def test_completion_moves_in_progress_game_to_ready(self):
+        self.game.mark_staged()
+        self.game.start()
+        self.assertEqual(self.game.state, Game.STATE_IN_PROGRESS)
+        for _ in range(3):
+            self.game.next_riddle()
+        self.assertEqual(self.game.state, Game.STATE_READY)
+        self.assertIsNone(self.game.entry_code)
+
     def test_end_time_not_set_before_last(self):
         self.game.next_riddle()
         self.assertIsNone(self.game.end_time)

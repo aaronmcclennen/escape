@@ -133,13 +133,16 @@ class Game(object):
     def next_riddle(self):
         """
         Advance to the next riddle. If advancing past the last riddle,
-        mark end_time to indicate game completion.
+        mark end_time and move an in-progress game back to READY.
         """
         self.current_riddle_index += 1
-        # if we've moved past the last riddle, mark end time
+        # if we've moved past the last riddle, mark completion and close game
         total = self.get_riddle_count()
         if self.current_riddle_index >= total:
-            self.end_time = datetime.now(timezone.utc)
+            if self.end_time is None:
+                self.end_time = datetime.now(timezone.utc)
+            if self.state == self.STATE_IN_PROGRESS:
+                self.stop()
 
     def get_total_attempt_count(self):
         attempts = 0
