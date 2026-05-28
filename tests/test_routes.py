@@ -198,6 +198,7 @@ class RiddleFlowTests(FlaskTestBase):
         resp = self.client.get("/results")
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b"Total elapsed time:", resp.data)
+        self.assertNotIn(b"Unknown", resp.data)
 
 
 # ─── Admin routes ────────────────────────────────────────────────────────────
@@ -360,6 +361,7 @@ class AdminResultsTests(FlaskTestBase):
         resp = self._admin_get("/admin/results")
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b"Total elapsed time:", resp.data)
+        self.assertNotIn(b"Unknown", resp.data)
 
     def test_restart_resets_and_redirects(self):
         self._complete_game()

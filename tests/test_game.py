@@ -42,6 +42,18 @@ class GameStateTransitionTests(unittest.TestCase):
         self.game.mark_ready()
         self.assertEqual(self.game.state, Game.STATE_READY)
 
+    def test_mark_ready_preserves_timing_and_scores(self):
+        self.game.mark_staged()
+        self.game.start()
+        self.game.user_scores["u1"] = 1
+        self.game.next_riddle()
+        self.assertIsNotNone(self.game.start_time)
+        self.assertIsNotNone(self.game.end_time)
+        self.game.mark_ready()
+        self.assertIsNotNone(self.game.start_time)
+        self.assertIsNotNone(self.game.end_time)
+        self.assertEqual(self.game.user_scores.get("u1"), 1)
+
     def test_mark_staged_from_ready(self):
         self.game.mark_staged()
         self.assertEqual(self.game.state, Game.STATE_STAGED)

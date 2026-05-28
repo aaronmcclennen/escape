@@ -250,13 +250,9 @@ class Game(object):
         self.entry_code = None
 
     def mark_ready(self):
-        """Mark game ready for starting (no entry code)."""
+        """Mark game ready for starting (no entry code), preserving result data."""
         self.state = self.STATE_READY
         self.entry_code = None
-        # keep timing/scores cleared until actual start
-        self.start_time = None
-        self.end_time = None
-        self.user_scores = {}
 
     def mark_editing(self):
         """Mark game editable (no entry code)."""
