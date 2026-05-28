@@ -191,6 +191,14 @@ class RiddleFlowTests(FlaskTestBase):
         self.assertEqual(self.test_game.state, Game.STATE_READY)
         self.assertIsNone(self.test_game.entry_code)
 
+    def test_user_results_shows_total_elapsed_time(self):
+        self._join_started_game()
+        self.client.post("/riddle", data={"guess": "a1"})
+        self.client.post("/riddle", data={"guess": "a2"})
+        resp = self.client.get("/results")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"Total elapsed time:", resp.data)
+
 
 # ─── Admin routes ────────────────────────────────────────────────────────────
 
@@ -346,6 +354,12 @@ class AdminResultsTests(FlaskTestBase):
         self._complete_game()
         resp = self._admin_get("/admin/results")
         self.assertEqual(resp.status_code, 200)
+
+    def test_admin_results_shows_total_elapsed_time(self):
+        self._complete_game()
+        resp = self._admin_get("/admin/results")
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"Total elapsed time:", resp.data)
 
     def test_restart_resets_and_redirects(self):
         self._complete_game()

@@ -8,9 +8,9 @@
   <div class="center">
     <h2>Game Complete: {{ game.name }}</h2>
     {% if duration_text %}
-      <p>Total time: <strong>{{ duration_text }}</strong></p>
+      <p>Total elapsed time: <strong>{{ duration_text }}</strong>{% if duration_seconds is not none %} ({{ duration_seconds }}s){% endif %}</p>
     {% else %}
-      <p>Total time: <strong>Unknown</strong></p>
+      <p>Total elapsed time: <strong>Unknown</strong></p>
     {% endif %}
 
     <h3>Scores</h3>
