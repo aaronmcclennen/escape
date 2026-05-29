@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-  <div class="center">
+  <div class="results-page">
     <h2>Game Complete: {{ game.name }}</h2>
     {% if duration_text %}
       <p>Total elapsed time: <strong>{{ duration_text }}</strong>{% if duration_seconds is not none %} ({{ duration_seconds }}s){% endif %}</p>
