@@ -54,6 +54,12 @@ input[type=submit] {
   transform: translate(-50%, -50%);
 }
 
+.results-page {
+  max-width: 900px;
+  margin: 32px auto;
+  padding: 0 16px;
+}
+
 input[type=submit]:hover {
   background-color: #45a049;
 }
