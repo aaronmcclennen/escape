@@ -84,12 +84,16 @@
 
     <div class="row">
       <div class="upload box">
-        <h3>Upload new game (JSON)</h3>
-        <p>Choose a riddles JSON file to add to the game list. The file will overwrite the configured config file.</p>
+        <h3>Upload new game (JSON + images)</h3>
+        <p>Select the riddles <strong>JSON file</strong> and any <strong>image files</strong> from the same folder. Images are saved to the static folder so they're available during play.</p>
         <form id="upload-form" action="{{ url_for('admin.admin_upload') }}" method="post" enctype="multipart/form-data">
-          <input id="game-file-input" type="file" name="file" accept=".json,application/json" style="display:none;">
-          <label for="game-file-input" class="button" style="cursor:pointer;">Choose and Upload</label>
-          <span id="selected-filename" style="margin-left:8px;">No file chosen</span>
+          <input id="game-file-input" type="file" name="file"
+                 accept=".json,application/json,.png,.jpg,.jpeg,.gif,.webp,.svg,image/*"
+                 multiple style="display:none;">
+          <label for="game-file-input" class="button" style="cursor:pointer;">Choose Files…</label>
+          <span id="selected-filename" style="margin-left:8px;color:#555;">No files chosen</span>
+          <div id="file-list" style="margin-top:6px;font-size:0.88em;color:#555;"></div>
+          <button type="submit" id="upload-btn" class="button" style="margin-top:10px;display:none;">Upload</button>
         </form>
       </div>
 
@@ -113,11 +117,24 @@
       const input = document.getElementById('game-file-input');
       const form = document.getElementById('upload-form');
       const filenameSpan = document.getElementById('selected-filename');
+      const fileList = document.getElementById('file-list');
+      const uploadBtn = document.getElementById('upload-btn');
       if (!input || !form) return;
       input.addEventListener('change', function(){
-        const name = input.files && input.files.length ? input.files[0].name : 'No file chosen';
-        filenameSpan.textContent = name;
-        if (input.files && input.files.length) form.submit();
+        const files = Array.from(input.files || []);
+        if (!files.length) {
+          filenameSpan.textContent = 'No files chosen';
+          fileList.innerHTML = '';
+          uploadBtn.style.display = 'none';
+          return;
+        }
+        filenameSpan.textContent = files.length === 1 ? files[0].name : `${files.length} files selected`;
+        fileList.innerHTML = files.map(f => {
+          const ext = f.name.split('.').pop().toLowerCase();
+          const icon = ext === 'json' ? '📄' : '🖼️';
+          return `<div>${icon} ${f.name}</div>`;
+        }).join('');
+        uploadBtn.style.display = 'inline-block';
       });
     })();
   </script>

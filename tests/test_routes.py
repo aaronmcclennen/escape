@@ -350,6 +350,77 @@ class AdminImageUploadTests(FlaskTestBase):
         self.assertIn(b"not allowed", resp.data)
 
 
+class AdminGameUploadTests(FlaskTestBase):
+    """Upload a JSON + images bundle via /admin/upload."""
+
+    _PNG = (
+        b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01'
+        b'\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00'
+        b'\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18'
+        b'\xd8N\x00\x00\x00\x00IEND\xaeB`\x82'
+    )
+    _JSON = b'{"riddles":[{"question":"Q","answer":["a"],"hint":"","image_name":"upload_img.png"}],"incorrect_responses":[],"correct_responses":[],"completion_message":"","completion_image_name":""}'
+
+    def tearDown(self):
+        super().tearDown()
+        from app import app as flask_app
+        for name in ("upload_img.png",):
+            p = os.path.join(flask_app.static_folder, name)
+            if os.path.exists(p):
+                os.remove(p)
+
+    def test_upload_json_and_image_together(self):
+        from app import app as flask_app, games as g_store
+        data = {
+            "file": [
+                (io.BytesIO(self._JSON), "mygame.json"),
+                (io.BytesIO(self._PNG),  "upload_img.png"),
+            ]
+        }
+        resp = self._admin_post(
+            "/admin/upload",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        # image was saved to static/
+        self.assertTrue(os.path.exists(os.path.join(flask_app.static_folder, "upload_img.png")))
+        # flash confirms image saved
+        self.assertIn(b"upload_img.png", resp.data)
+
+    def test_upload_images_only(self):
+        from app import app as flask_app
+        data = {
+            "file": [
+                (io.BytesIO(self._PNG), "upload_img.png"),
+            ]
+        }
+        resp = self._admin_post(
+            "/admin/upload",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(os.path.exists(os.path.join(flask_app.static_folder, "upload_img.png")))
+
+    def test_upload_bad_extension_skipped(self):
+        data = {
+            "file": [
+                (io.BytesIO(b"badfile"), "malware.exe"),
+            ]
+        }
+        resp = self._admin_post(
+            "/admin/upload",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"Skipped", resp.data)
+
+
 class AdminGameLifecycleTests(FlaskTestBase):
     """Start → begin → current → results → restart."""
 

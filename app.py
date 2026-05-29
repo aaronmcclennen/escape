@@ -732,24 +732,62 @@ def admin_index():
 
 @admin_bp.route("/upload", methods=["POST"])
 def admin_upload():
-    file = request.files.get("file")
-    if not file:
+    """
+    Accept a multipart upload of one JSON game-config file plus any number of
+    image files that live in the same directory as the JSON on the admin's machine.
+    - The JSON file is written to the configured config path and reloaded.
+    - Each image file is saved into the app's static folder so it can be served.
+    """
+    uploaded_files = request.files.getlist("file")
+    if not uploaded_files or all(f.filename == "" for f in uploaded_files):
+        flash("No files selected.", "error")
         return redirect(url_for("admin.admin_index"))
-    try:
-        # overwrite the configured JSON file with the uploaded file contents
-        global config_loader
-        target = config_loader.path_to_json_config
-        # write bytes to preserve encoding; uploaded file may be binary stream
-        with open(target, "wb") as f:
-            f.write(file.read())
-        # reload config loader
-        config_loader = ConfigLoader(target)
-        # add the new game to the Games object
-        if hasattr(config_loader, "game") and config_loader.game is not None:
-            games.add(config_loader.game)
-    except Exception:
-        logging.exception("Failed to upload new game file")
-    return redirect(url_for("admin.admin_questions"))
+
+    json_file = None
+    image_files = []
+    for f in uploaded_files:
+        if not f or not f.filename:
+            continue
+        ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+        if ext == "json":
+            if json_file is None:
+                json_file = f
+            else:
+                flash("Multiple JSON files supplied — only the first was used.", "error")
+        elif ext in ALLOWED_IMAGE_EXTENSIONS:
+            image_files.append(f)
+        else:
+            flash(f"Skipped '{f.filename}' — unsupported file type.", "error")
+
+    images_saved = []
+    for img in image_files:
+        try:
+            name = _save_uploaded_image(img)
+            images_saved.append(name)
+        except Exception:
+            logging.exception("Failed to save uploaded image %s", img.filename)
+            flash(f"Failed to save image '{img.filename}'.", "error")
+
+    if images_saved:
+        flash(f"Saved {len(images_saved)} image(s): {', '.join(images_saved)}", "info")
+
+    if json_file:
+        try:
+            global config_loader
+            target = config_loader.path_to_json_config
+            with open(target, "wb") as f:
+                f.write(json_file.read())
+            config_loader = ConfigLoader(target)
+            if hasattr(config_loader, "game") and config_loader.game is not None:
+                games.add(config_loader.game)
+            flash(f"Game '{config_loader.game.name}' loaded from JSON.", "info")
+        except Exception:
+            logging.exception("Failed to upload new game file")
+            flash("Failed to load the game JSON.", "error")
+        return redirect(url_for("admin.admin_questions"))
+
+    # images only — redirect to index
+    return redirect(url_for("admin.admin_index"))
 
 
 @app.route("/admin/login", methods=["GET","POST"])
