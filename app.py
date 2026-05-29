@@ -9,6 +9,7 @@ from flask import (
 )
 from flask_login import LoginManager, UserMixin, login_user, current_user
 from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
 from application.JsonLoader import ConfigLoader
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -42,6 +43,27 @@ config_file = os.getenv("VERMUTEN_CONFIG")
 config_loader = ConfigLoader(config_file)
 games = Games()
 games.add(config_loader.game)
+
+
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "svg"}
+
+
+def _save_uploaded_image(file_storage) -> str:
+    """
+    Save an uploaded image FileStorage object into the app's static folder.
+    Returns the bare filename (suitable for use as image_name in a Riddle).
+    Raises ValueError if the file is missing or has a disallowed extension.
+    """
+    if not file_storage or not file_storage.filename:
+        raise ValueError("No file provided.")
+    original = secure_filename(file_storage.filename)
+    ext = original.rsplit(".", 1)[-1].lower() if "." in original else ""
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise ValueError(f"File type '.{ext}' is not allowed. Allowed: {', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))}")
+    dest = os.path.join(app.static_folder, original)
+    file_storage.save(dest)
+    logging.info("Uploaded image saved to %s", dest)
+    return original
 
 
 def _format_duration(secs):
@@ -533,11 +555,22 @@ def admin_create_question():
         flash("At least one answer is required.", "error")
         return redirect(url_for("admin.admin_new_question"))
 
+    # Handle optional image upload — takes priority over the text field
+    image_name = request.form.get("image_name", "").strip()
+    uploaded = request.files.get("image_file")
+    if uploaded and uploaded.filename:
+        try:
+            image_name = _save_uploaded_image(uploaded)
+            flash(f"Image '{image_name}' uploaded.", "info")
+        except ValueError as exc:
+            flash(str(exc), "error")
+            return redirect(url_for("admin.admin_new_question"))
+
     payload = {
         "question": question_text,
         "answer": answers,
         "hint": request.form.get("hint", "").strip(),
-        "image_name": request.form.get("image_name", "").strip(),
+        "image_name": image_name,
     }
     new_riddle = Riddle(
         payload["question"],
@@ -574,13 +607,24 @@ def admin_edit_question(index):
 
 @admin_bp.route("/questions/update/<int:index>", methods=["POST"])
 def admin_update_question(index):
+    # Handle optional image upload — takes priority over the text field
+    image_name = request.form.get("image_name", "").strip()
+    uploaded = request.files.get("image_file")
+    if uploaded and uploaded.filename:
+        try:
+            image_name = _save_uploaded_image(uploaded)
+            flash(f"Image '{image_name}' uploaded.", "info")
+        except ValueError as exc:
+            flash(str(exc), "error")
+            return redirect(url_for("admin.admin_edit_question", index=index))
+
     payload = {
         "question": request.form.get("question", ""),
         "answer": [
             s.strip() for s in request.form.get("answer", "").split(",") if s.strip()
         ],
         "hint": request.form.get("hint", ""),
-        "image_name": request.form.get("image_name", ""),
+        "image_name": image_name,
     }
     # Create a Riddle object from the payload
     new_riddle = Riddle(

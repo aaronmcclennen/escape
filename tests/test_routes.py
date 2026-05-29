@@ -6,6 +6,7 @@ starting a real server.  Covers the public game flow (index, join, wait,
 riddle, results) and the admin lifecycle (login, index, questions,
 start, begin, current, cancel, resume, results, restart).
 """
+import io
 import os
 import unittest
 from datetime import datetime, timezone
@@ -260,6 +261,93 @@ class AdminQuestionsTests(FlaskTestBase):
         }, follow_redirects=True)
         # should redirect back to admin index with a flash
         self.assertEqual(resp.status_code, 200)
+
+
+class AdminImageUploadTests(FlaskTestBase):
+    """Image upload via create and update question routes."""
+
+    def setUp(self):
+        super().setUp()
+        # ensure admin is logged in and a game is selected for editing
+        self._admin_get("/admin/questions?game_id=TestGame")
+
+    def _fake_image(self, filename="test_upload.png"):
+        """Return a minimal 1×1 PNG as a BytesIO suitable for multipart upload."""
+        # 1×1 red pixel PNG (67 bytes)
+        png_bytes = (
+            b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01'
+            b'\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00\x00'
+            b'\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00\x05\x18'
+            b'\xd8N\x00\x00\x00\x00IEND\xaeB`\x82'
+        )
+        return (io.BytesIO(png_bytes), filename)
+
+    def tearDown(self):
+        super().tearDown()
+        # clean up any uploaded test images from static/
+        from app import app as flask_app
+        for name in ("test_upload.png", "test_update.png"):
+            path = os.path.join(flask_app.static_folder, name)
+            if os.path.exists(path):
+                os.remove(path)
+
+    def test_create_question_with_image_upload(self):
+        data = {
+            "question": "What colour is the sky?",
+            "answer": "blue",
+            "hint": "",
+            "image_name": "",
+            "image_file": self._fake_image("test_upload.png"),
+        }
+        resp = self._admin_post(
+            "/admin/questions/create",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        # verify the image was saved to disk
+        from app import app as flask_app
+        self.assertTrue(os.path.exists(os.path.join(flask_app.static_folder, "test_upload.png")))
+        # verify the riddle has the correct image_name
+        game = next(g for g in __import__('app').games.get_all() if g.name == "TestGame")
+        last = game.riddles[-1]
+        self.assertEqual(last.get_image_name(), "test_upload.png")
+
+    def test_update_question_with_image_upload(self):
+        data = {
+            "question": "Updated question",
+            "answer": "a1",
+            "hint": "",
+            "image_name": "",
+            "image_file": self._fake_image("test_update.png"),
+        }
+        resp = self._admin_post(
+            "/admin/questions/update/0",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        from app import app as flask_app
+        self.assertTrue(os.path.exists(os.path.join(flask_app.static_folder, "test_update.png")))
+        game = next(g for g in __import__('app').games.get_all() if g.name == "TestGame")
+        self.assertEqual(game.riddles[0].get_image_name(), "test_update.png")
+
+    def test_create_question_rejects_bad_extension(self):
+        data = {
+            "question": "Bad file",
+            "answer": "x",
+            "image_file": (io.BytesIO(b"not an image"), "evil.exe"),
+        }
+        resp = self._admin_post(
+            "/admin/questions/create",
+            data=data,
+            content_type="multipart/form-data",
+            follow_redirects=True,
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b"not allowed", resp.data)
 
 
 class AdminGameLifecycleTests(FlaskTestBase):

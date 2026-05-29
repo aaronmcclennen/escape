@@ -22,9 +22,9 @@
 {% endwith %}
 
 {% if action == 'create' %}
-<form action="{{ url_for('admin.admin_create_question') }}" method="post">
+<form action="{{ url_for('admin.admin_create_question') }}" method="post" enctype="multipart/form-data">
 {% else %}
-<form action="{{ url_for('admin.admin_update_question', index=riddle.id) }}" method="post">
+<form action="{{ url_for('admin.admin_update_question', index=riddle.id) }}" method="post" enctype="multipart/form-data">
 {% endif %}
   <label>Question <span style="color:#c00">*</span></label><br>
   <textarea class="admin-textarea" name="question" required placeholder="Enter the question text">{{ riddle.question if riddle else '' }}</textarea><br>
@@ -32,11 +32,61 @@
   <input class="admin-input" type="text" name="answer" required placeholder="e.g. Paris, paris" value="{{ riddle.answer if riddle else '' }}"><br>
   <label>Hint <small style="color:#888">(optional — shown to players who are stuck)</small></label><br>
   <input class="admin-input" type="text" name="hint" placeholder="A helpful clue…" value="{{ riddle.hint if riddle else '' }}"><br>
-  <label>Image name <small style="color:#888">(optional — filename in static/)</small></label><br>
-  <input class="admin-input" type="text" name="image_name" placeholder="e.g. trophy.jpg" value="{{ riddle.image_name if riddle else '' }}"><br><br>
+
+  <label>Image <small style="color:#888">(optional)</small></label><br>
+
+  {# Show currently-set image if editing #}
+  {% if riddle and riddle.image_name %}
+    <div style="margin:8px 0 4px;">
+      <small style="color:#555">Current image: <strong>{{ riddle.image_name }}</strong></small><br>
+      <img id="current-img" src="{{ url_for('static', filename=riddle.image_name) }}"
+           style="max-width:220px;max-height:160px;margin:6px 0;border:1px solid #ccc;border-radius:4px;">
+    </div>
+  {% endif %}
+
+  {# Upload a new file #}
+  <div style="margin:4px 0 8px;">
+    <label style="font-weight:normal;">Upload new image:</label><br>
+    <input type="file" name="image_file" accept="image/*" id="image-file-input"
+           style="margin:4px 0;">
+    <div id="upload-preview-wrap" style="display:none;margin-top:6px;">
+      <small style="color:#555">Preview:</small><br>
+      <img id="upload-preview"
+           style="max-width:220px;max-height:160px;border:1px solid #ccc;border-radius:4px;">
+    </div>
+  </div>
+
+  {# Manual filename fallback #}
+  <label>…or enter existing image filename <small style="color:#888">(filename in static/)</small></label><br>
+  <input class="admin-input" type="text" name="image_name" id="image-name-input"
+         placeholder="e.g. trophy.jpg" value="{{ riddle.image_name if riddle else '' }}"><br><br>
+
   <input type="submit" value="{% if action == 'create' %}Create{% else %}Update{% endif %}">
   <a href="{{ url_for('admin.admin_questions') }}" class="button">Cancel</a>
 </form>
+
+<script>
+  (function () {
+    var fileInput = document.getElementById('image-file-input');
+    var preview   = document.getElementById('upload-preview');
+    var wrap      = document.getElementById('upload-preview-wrap');
+    var nameInput = document.getElementById('image-name-input');
+
+    fileInput.addEventListener('change', function () {
+      var file = fileInput.files[0];
+      if (!file) { wrap.style.display = 'none'; return; }
+      // Show live preview
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        preview.src = e.target.result;
+        wrap.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+      // Auto-fill the text field with the chosen filename (user can still edit)
+      nameInput.value = file.name;
+    });
+  })();
+</script>
 
 </body>
 </html>
