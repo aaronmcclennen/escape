@@ -262,6 +262,25 @@ class AdminQuestionsTests(FlaskTestBase):
         # should redirect back to admin index with a flash
         self.assertEqual(resp.status_code, 200)
 
+    def test_edit_state_persists_after_visiting_admin_index(self):
+        self._admin_get("/admin/questions?game_id=TestGame")
+        self.assertEqual(self.test_game.state, Game.STATE_EDITING)
+
+        self._admin_get("/admin/")
+        self.assertEqual(self.test_game.state, Game.STATE_EDITING)
+
+    def test_switching_edit_target_releases_previous_edit_lock(self):
+        other_game = Game("OtherGame", [_make_riddle("QX", ["ax"])])
+        games.add(other_game)
+
+        self._admin_get("/admin/questions?game_id=TestGame")
+        self.assertEqual(self.test_game.state, Game.STATE_EDITING)
+        self.assertEqual(other_game.state, Game.STATE_READY)
+
+        self._admin_get("/admin/questions?game_id=OtherGame")
+        self.assertEqual(self.test_game.state, Game.STATE_READY)
+        self.assertEqual(other_game.state, Game.STATE_EDITING)
+
 
 class AdminImageUploadTests(FlaskTestBase):
     """Image upload via create and update question routes."""

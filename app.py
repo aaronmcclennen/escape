@@ -519,9 +519,14 @@ def admin_questions():
         flash(f"Cannot edit — the game '{selected_game.name}' is in state '{selected_game.state}'. Only games in state 'ready' may be edited.", "error")
         return redirect(url_for("admin.admin_index"))
 
-    # Store the selected game in the user's server-side data store
-    user_store["selected_game"] = selected_game
-    selected_game.mark_editing()
+    # Enter edit mode only when switching to a different game.
+    # This preserves existing edit locks and avoids unnecessary state churn.
+    if current_user_selected is not selected_game:
+        # Release this admin's previous edit lock before switching games.
+        if current_user_selected and current_user_selected.state == current_user_selected.STATE_EDITING:
+            current_user_selected.mark_ready()
+        user_store["selected_game"] = selected_game
+        selected_game.mark_editing()
 
     # Handle POST to update game name (existing behavior)
     if request.method == "POST" and request.form.get("name"):
@@ -718,8 +723,8 @@ def admin_index():
     logging.info("Selected game: %s", selected_game)
     if selected_game is not None:
         try:
-            # Do not force a READY state if the game is STAGED or IN_PROGRESS
-            if not selected_game.is_in_progress():
+            # Preserve EDITING locks; only normalize inactive non-editing games to READY.
+            if (not selected_game.is_in_progress()) and (selected_game.state != selected_game.STATE_EDITING):
                 selected_game.mark_ready()
         except Exception:
             logging.exception("admin_index: failed to update selected game state")
@@ -837,7 +842,8 @@ def admin_start_game():
         return redirect(url_for("admin.admin_index"))
 
     # put staged game into this admin's user store and show active page
-    user_store["selected_game"] = selected_game
+    # clear editing selection so admin intent is unambiguous while a game is active
+    user_store["selected_game"] = None
     user_store["active_game"] = selected_game
     join_url = url_for("join_game", game_id=selected_game.name, entry_code=selected_game.get_entry_code(), _external=True)
     return render_template("admin_active_game.html.j2", game=selected_game, entry_code=selected_game.get_entry_code(), join_url=join_url)
