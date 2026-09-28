@@ -528,13 +528,14 @@ def admin_questions():
         user_store["selected_game"] = selected_game
         selected_game.mark_editing()
 
-    # Handle POST to update game name (existing behavior)
+    # Handle POST to save game metadata and exit edit mode.
     if request.method == "POST" and request.form.get("name"):
         new_name = (request.form.get("name") or "").strip()
         if new_name:
             selected_game.name = new_name
-        # PRG: redirect after POST so the page reloads with the updated value
-        return redirect(url_for("admin.admin_questions", game_id=selected_game.name))
+        # Save the game by leaving editing state and returning to admin menu.
+        selected_game.mark_ready()
+        return redirect(url_for("admin.admin_index"))
 
     total_count = selected_game.get_riddle_count()
     return render_template("admin_questions.html.j2", game=selected_game, total_count=total_count)
