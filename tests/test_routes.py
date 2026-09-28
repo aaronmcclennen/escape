@@ -281,6 +281,31 @@ class AdminQuestionsTests(FlaskTestBase):
         self.assertEqual(self.test_game.state, Game.STATE_READY)
         self.assertEqual(other_game.state, Game.STATE_EDITING)
 
+    def test_create_question_after_create_new_game_stays_on_new_game(self):
+        self._admin_post("/admin/questions", data={
+            "create_new": "1",
+            "new_game_name": "BrandNew",
+        }, follow_redirects=False)
+
+        new_game = games.find("BrandNew")
+        self.assertIsNotNone(new_game)
+
+        resp = self._admin_post("/admin/questions/create", data={
+            "question": "New game question",
+            "answer": "new-answer",
+            "hint": "",
+            "image_name": "",
+        }, follow_redirects=False)
+
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/admin/questions?game_id=BrandNew", resp.headers["Location"])
+        self.assertEqual(new_game.get_riddle_count(), 1)
+        self.assertEqual(self.test_game.get_riddle_count(), 2)
+
+        with self.client.session_transaction() as sess:
+            uid = sess["user_id"]
+        self.assertIs(USER_DATA[uid]["selected_game"], new_game)
+
 
 class AdminImageUploadTests(FlaskTestBase):
     """Image upload via create and update question routes."""

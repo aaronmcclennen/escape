@@ -115,10 +115,10 @@ def get_active_game():
     user_store = get_user_store()
     return user_store.get("active_game", None) if user_store else None
 
-def select_game_from_form():
+def select_game_from_form(fallback_game=None):
     """
     Read game_id from the request (GET or POST) and return (selected_game, game_id).
-    Falls back to the first game or an empty Game if none available.
+    Falls back to fallback_game, then to the first game or an empty Game if none available.
     """
     game_id = request.args.get("game_id") or request.form.get("game_id")
     selected_game = None
@@ -132,11 +132,21 @@ def select_game_from_form():
                     selected_game = g
                     break
 
+    if not selected_game and fallback_game is not None:
+        selected_game = fallback_game
+
     if not selected_game:
         selected_game = games.get_all()[0] if games.get_all() else Game("Untitled", [])
         logging.info(f"Falling back to first game: {selected_game.name}. didn't find {game_id} ")
 
     return selected_game, game_id
+
+
+def _redirect_admin_questions(game=None):
+    game_name = getattr(game, "name", None)
+    if game_name:
+        return redirect(url_for("admin.admin_questions", game_id=game_name))
+    return redirect(url_for("admin.admin_questions"))
 
 # --- new: admin blueprint and centralized before_request auth ---
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -503,12 +513,12 @@ def admin_questions():
         # redirect to questions page for the new game
         return redirect(url_for("admin.admin_questions", game_id=new_game.name))
 
-    # Determine selected game (by index or id, for example via ?game_id= or a form field)
-    selected_game, game_id = select_game_from_form()
+    # Determine selected game (by index or id), defaulting to the admin's current selection.
+    current_user_selected = user_store.get("selected_game")
+    selected_game, game_id = select_game_from_form(fallback_game=current_user_selected)
 
     # Deny edit if another admin is already editing this game
     # allow if the current user already has this game selected
-    current_user_selected = user_store.get("selected_game")
     if selected_game.state == selected_game.STATE_EDITING and current_user_selected is not selected_game:
         logging.info("admin_questions: denying edit, game %s already in STATE_EDITING", selected_game.name)
         flash(f"Cannot edit — the game '{selected_game.name}' is currently being edited by another admin. Please try again later.", "error")
@@ -591,7 +601,7 @@ def admin_create_question():
 
     get_selected_game().add_riddle_at_end(new_riddle)
     flash("Question added.", "info")
-    return redirect(url_for("admin.admin_questions"))
+    return _redirect_admin_questions(get_selected_game())
 
 
 @admin_bp.route("/questions/edit/<int:index>")
@@ -599,7 +609,7 @@ def admin_edit_question(index):
     try:
         r = get_selected_game().get_riddle_at_index(index)
     except Exception:
-        return redirect(url_for("admin.admin_questions"))
+        return _redirect_admin_questions(get_selected_game())
     riddle = {
         "id": index,
         "question": r.get_riddle(),
@@ -644,7 +654,7 @@ def admin_update_question(index):
         "",  # completion_image_name
     )
     get_selected_game().replace_riddle_at_index(index, new_riddle)
-    return redirect(url_for("admin.admin_questions"))
+    return _redirect_admin_questions(get_selected_game())
 
 
 @admin_bp.route("/questions/delete/<int:index>", methods=["POST"])
@@ -652,14 +662,13 @@ def admin_delete_question(index):
     game = get_selected_game()
 
     game.remove_riddle_by_index(index)
-    return redirect(url_for("admin.admin_questions"))
+    return _redirect_admin_questions(game)
 
 
 @admin_bp.route("/questions/move/<int:index>/<direction>", methods=["POST"])
 def admin_move_question(index, direction):
+    game = get_selected_game()
     try:
-        game = get_selected_game()
-
         lst = list(game.riddles)
         n = len(lst)
         if index < 0 or index >= n:
@@ -670,12 +679,12 @@ def admin_move_question(index, direction):
             lst[index], lst[index + 1] = lst[index + 1], lst[index]
         else:
             # nothing to do
-            return redirect(url_for("admin.admin_questions"))
+            return _redirect_admin_questions(game)
         # update the Game object and persist via ConfigLoader structures
         game.riddles = lst
     except Exception:
         logging.exception("Failed to move riddle")
-    return redirect(url_for("admin.admin_questions"))
+    return _redirect_admin_questions(game)
 
 
 @admin_bp.route("/questions/download")
@@ -689,7 +698,7 @@ def admin_download_questions():
         return response
     except Exception:
         logging.exception("Failed to prepare download")
-        return redirect(url_for("admin.admin_questions"))
+        return _redirect_admin_questions(get_selected_game())
 
 
 @admin_bp.route("/games/delete", methods=["POST"])
